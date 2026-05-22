@@ -3,11 +3,14 @@ import '../models/calendar_event.dart';
 
 @dao
 abstract class CalendarDao {
-  @Query('SELECT * FROM CalendarEvent ORDER BY startAt ASC')
-  Future<List<CalendarEvent>> getAllEvents();
+  @Query('SELECT * FROM CalendarEvent WHERE date = :date ORDER BY startTime ASC')
+  Future<List<CalendarEvent>> getEventsForDate(String date);
 
-  @Query('SELECT * FROM CalendarEvent WHERE startAt >= :from AND startAt <= :to ORDER BY startAt ASC')
-  Future<List<CalendarEvent>> getEventsInRange(int from, int to);
+  @Query('SELECT * FROM CalendarEvent WHERE date >= :from AND date <= :to ORDER BY date ASC, startTime ASC')
+  Future<List<CalendarEvent>> getEventsInRange(String from, String to);
+
+  @Query('SELECT * FROM CalendarEvent WHERE linkedJobId = :jobId ORDER BY date ASC')
+  Future<List<CalendarEvent>> getEventsForJob(String jobId);
 
   @insert
   Future<void> insertEvent(CalendarEvent event);

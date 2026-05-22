@@ -80,13 +80,17 @@ class _$AppDatabase extends AppDatabase {
 
   AssetDao? _assetDaoInstance;
 
+  DayEntryDao? _dayEntryDaoInstance;
+
+  WeekTodoDao? _weekTodoDaoInstance;
+
   Future<sqflite.Database> open(
     String path,
     List<Migration> migrations, [
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 1,
+      version: 2,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -106,9 +110,13 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `isPurchased` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `startAt` INTEGER NOT NULL, `endAt` INTEGER NOT NULL, `isAllDay` INTEGER NOT NULL, `category` TEXT, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `filePath` TEXT NOT NULL, `tags` TEXT, `notes` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `DayEntry` (`id` TEXT NOT NULL, `date` TEXT NOT NULL, `mood` TEXT, `diary` TEXT, PRIMARY KEY (`id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `WeekTodo` (`id` TEXT NOT NULL, `weekStart` TEXT NOT NULL, `title` TEXT NOT NULL, `isDone` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
 
         await callback?.onCreate?.call(database, version);
       },
@@ -134,6 +142,16 @@ class _$AppDatabase extends AppDatabase {
   @override
   AssetDao get assetDao {
     return _assetDaoInstance ??= _$AssetDao(database, changeListener);
+  }
+
+  @override
+  DayEntryDao get dayEntryDao {
+    return _dayEntryDaoInstance ??= _$DayEntryDao(database, changeListener);
+  }
+
+  @override
+  WeekTodoDao get weekTodoDao {
+    return _weekTodoDaoInstance ??= _$WeekTodoDao(database, changeListener);
   }
 }
 
@@ -375,10 +393,13 @@ class _$CalendarDao extends CalendarDao {
                   'id': item.id,
                   'title': item.title,
                   'description': item.description,
-                  'startAt': item.startAt,
-                  'endAt': item.endAt,
-                  'isAllDay': item.isAllDay ? 1 : 0,
-                  'category': item.category
+                  'date': item.date,
+                  'startTime': item.startTime,
+                  'endTime': item.endTime,
+                  'category': item.category,
+                  'linkedJobId': item.linkedJobId,
+                  'linkedJobTitle': item.linkedJobTitle,
+                  'createdAt': item.createdAt
                 }),
         _calendarEventUpdateAdapter = UpdateAdapter(
             database,
@@ -388,10 +409,13 @@ class _$CalendarDao extends CalendarDao {
                   'id': item.id,
                   'title': item.title,
                   'description': item.description,
-                  'startAt': item.startAt,
-                  'endAt': item.endAt,
-                  'isAllDay': item.isAllDay ? 1 : 0,
-                  'category': item.category
+                  'date': item.date,
+                  'startTime': item.startTime,
+                  'endTime': item.endTime,
+                  'category': item.category,
+                  'linkedJobId': item.linkedJobId,
+                  'linkedJobTitle': item.linkedJobTitle,
+                  'createdAt': item.createdAt
                 }),
         _calendarEventDeletionAdapter = DeletionAdapter(
             database,
@@ -401,10 +425,13 @@ class _$CalendarDao extends CalendarDao {
                   'id': item.id,
                   'title': item.title,
                   'description': item.description,
-                  'startAt': item.startAt,
-                  'endAt': item.endAt,
-                  'isAllDay': item.isAllDay ? 1 : 0,
-                  'category': item.category
+                  'date': item.date,
+                  'startTime': item.startTime,
+                  'endTime': item.endTime,
+                  'category': item.category,
+                  'linkedJobId': item.linkedJobId,
+                  'linkedJobTitle': item.linkedJobTitle,
+                  'createdAt': item.createdAt
                 });
 
   final sqflite.DatabaseExecutor database;
@@ -420,28 +447,50 @@ class _$CalendarDao extends CalendarDao {
   final DeletionAdapter<CalendarEvent> _calendarEventDeletionAdapter;
 
   @override
-  Future<List<CalendarEvent>> getAllEvents() async {
+  Future<List<CalendarEvent>> getEventsForDate(String date) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM CalendarEvent ORDER BY startAt ASC',
+        'SELECT * FROM CalendarEvent WHERE date = ?1 ORDER BY startTime ASC',
         mapper: (Map<String, Object?> row) => CalendarEvent(
             id: row['id'] as String,
             title: row['title'] as String,
             description: row['description'] as String?,
-            startAt: row['startAt'] as int,
-            endAt: row['endAt'] as int,
-            isAllDay: (row['isAllDay'] as int) != 0,
-            category: row['category'] as String?));
+            date: row['date'] as String,
+            startTime: row['startTime'] as String?,
+            endTime: row['endTime'] as String?,
+            category: row['category'] as String,
+            linkedJobId: row['linkedJobId'] as String?,
+            linkedJobTitle: row['linkedJobTitle'] as String?,
+            createdAt: row['createdAt'] as int),
+        arguments: [date]);
   }
 
   @override
   Future<List<CalendarEvent>> getEventsInRange(
-    int from,
-    int to,
+    String from,
+    String to,
   ) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM CalendarEvent WHERE startAt >= ?1 AND startAt <= ?2 ORDER BY startAt ASC',
-        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, startAt: row['startAt'] as int, endAt: row['endAt'] as int, isAllDay: (row['isAllDay'] as int) != 0, category: row['category'] as String?),
+        'SELECT * FROM CalendarEvent WHERE date >= ?1 AND date <= ?2 ORDER BY date ASC, startTime ASC',
+        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, date: row['date'] as String, startTime: row['startTime'] as String?, endTime: row['endTime'] as String?, category: row['category'] as String, linkedJobId: row['linkedJobId'] as String?, linkedJobTitle: row['linkedJobTitle'] as String?, createdAt: row['createdAt'] as int),
         arguments: [from, to]);
+  }
+
+  @override
+  Future<List<CalendarEvent>> getEventsForJob(String jobId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM CalendarEvent WHERE linkedJobId = ?1 ORDER BY date ASC',
+        mapper: (Map<String, Object?> row) => CalendarEvent(
+            id: row['id'] as String,
+            title: row['title'] as String,
+            description: row['description'] as String?,
+            date: row['date'] as String,
+            startTime: row['startTime'] as String?,
+            endTime: row['endTime'] as String?,
+            category: row['category'] as String,
+            linkedJobId: row['linkedJobId'] as String?,
+            linkedJobTitle: row['linkedJobTitle'] as String?,
+            createdAt: row['createdAt'] as int),
+        arguments: [jobId]);
   }
 
   @override
@@ -559,5 +608,173 @@ class _$AssetDao extends AssetDao {
   @override
   Future<void> deleteAsset(Asset asset) async {
     await _assetDeletionAdapter.delete(asset);
+  }
+}
+
+class _$DayEntryDao extends DayEntryDao {
+  _$DayEntryDao(
+    this.database,
+    this.changeListener,
+  )   : _queryAdapter = QueryAdapter(database),
+        _dayEntryInsertionAdapter = InsertionAdapter(
+            database,
+            'DayEntry',
+            (DayEntry item) => <String, Object?>{
+                  'id': item.id,
+                  'date': item.date,
+                  'mood': item.mood,
+                  'diary': item.diary
+                }),
+        _dayEntryUpdateAdapter = UpdateAdapter(
+            database,
+            'DayEntry',
+            ['id'],
+            (DayEntry item) => <String, Object?>{
+                  'id': item.id,
+                  'date': item.date,
+                  'mood': item.mood,
+                  'diary': item.diary
+                }),
+        _dayEntryDeletionAdapter = DeletionAdapter(
+            database,
+            'DayEntry',
+            ['id'],
+            (DayEntry item) => <String, Object?>{
+                  'id': item.id,
+                  'date': item.date,
+                  'mood': item.mood,
+                  'diary': item.diary
+                });
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  final InsertionAdapter<DayEntry> _dayEntryInsertionAdapter;
+
+  final UpdateAdapter<DayEntry> _dayEntryUpdateAdapter;
+
+  final DeletionAdapter<DayEntry> _dayEntryDeletionAdapter;
+
+  @override
+  Future<DayEntry?> getEntryForDate(String date) async {
+    return _queryAdapter.query('SELECT * FROM DayEntry WHERE date = ?1 LIMIT 1',
+        mapper: (Map<String, Object?> row) => DayEntry(
+            id: row['id'] as String,
+            date: row['date'] as String,
+            mood: row['mood'] as String?,
+            diary: row['diary'] as String?),
+        arguments: [date]);
+  }
+
+  @override
+  Future<List<DayEntry>> getEntriesInRange(
+    String from,
+    String to,
+  ) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM DayEntry WHERE date >= ?1 AND date <= ?2',
+        mapper: (Map<String, Object?> row) => DayEntry(
+            id: row['id'] as String,
+            date: row['date'] as String,
+            mood: row['mood'] as String?,
+            diary: row['diary'] as String?),
+        arguments: [from, to]);
+  }
+
+  @override
+  Future<void> insertEntry(DayEntry entry) async {
+    await _dayEntryInsertionAdapter.insert(entry, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> updateEntry(DayEntry entry) async {
+    await _dayEntryUpdateAdapter.update(entry, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> deleteEntry(DayEntry entry) async {
+    await _dayEntryDeletionAdapter.delete(entry);
+  }
+}
+
+class _$WeekTodoDao extends WeekTodoDao {
+  _$WeekTodoDao(
+    this.database,
+    this.changeListener,
+  )   : _queryAdapter = QueryAdapter(database),
+        _weekTodoInsertionAdapter = InsertionAdapter(
+            database,
+            'WeekTodo',
+            (WeekTodo item) => <String, Object?>{
+                  'id': item.id,
+                  'weekStart': item.weekStart,
+                  'title': item.title,
+                  'isDone': item.isDone ? 1 : 0,
+                  'createdAt': item.createdAt
+                }),
+        _weekTodoUpdateAdapter = UpdateAdapter(
+            database,
+            'WeekTodo',
+            ['id'],
+            (WeekTodo item) => <String, Object?>{
+                  'id': item.id,
+                  'weekStart': item.weekStart,
+                  'title': item.title,
+                  'isDone': item.isDone ? 1 : 0,
+                  'createdAt': item.createdAt
+                }),
+        _weekTodoDeletionAdapter = DeletionAdapter(
+            database,
+            'WeekTodo',
+            ['id'],
+            (WeekTodo item) => <String, Object?>{
+                  'id': item.id,
+                  'weekStart': item.weekStart,
+                  'title': item.title,
+                  'isDone': item.isDone ? 1 : 0,
+                  'createdAt': item.createdAt
+                });
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  final InsertionAdapter<WeekTodo> _weekTodoInsertionAdapter;
+
+  final UpdateAdapter<WeekTodo> _weekTodoUpdateAdapter;
+
+  final DeletionAdapter<WeekTodo> _weekTodoDeletionAdapter;
+
+  @override
+  Future<List<WeekTodo>> getTodosForWeek(String weekStart) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM WeekTodo WHERE weekStart = ?1 ORDER BY createdAt ASC',
+        mapper: (Map<String, Object?> row) => WeekTodo(
+            id: row['id'] as String,
+            weekStart: row['weekStart'] as String,
+            title: row['title'] as String,
+            isDone: (row['isDone'] as int) != 0,
+            createdAt: row['createdAt'] as int),
+        arguments: [weekStart]);
+  }
+
+  @override
+  Future<void> insertTodo(WeekTodo todo) async {
+    await _weekTodoInsertionAdapter.insert(todo, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> updateTodo(WeekTodo todo) async {
+    await _weekTodoUpdateAdapter.update(todo, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> deleteTodo(WeekTodo todo) async {
+    await _weekTodoDeletionAdapter.delete(todo);
   }
 }
