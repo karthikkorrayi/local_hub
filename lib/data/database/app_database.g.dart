@@ -80,6 +80,8 @@ class _$AppDatabase extends AppDatabase {
 
   AssetDao? _assetDaoInstance;
 
+  AssetFolderDao? _assetFolderDaoInstance;
+
   DayEntryDao? _dayEntryDaoInstance;
 
   WeekTodoDao? _weekTodoDaoInstance;
@@ -90,7 +92,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 2,
+      version: 3,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -112,7 +114,9 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `filePath` TEXT NOT NULL, `tags` TEXT, `notes` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL, `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+        await database.execute(
+            'CREATE TABLE IF NOT EXISTS `AssetFolder` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `DayEntry` (`id` TEXT NOT NULL, `date` TEXT NOT NULL, `mood` TEXT, `diary` TEXT, PRIMARY KEY (`id`))');
         await database.execute(
@@ -142,6 +146,12 @@ class _$AppDatabase extends AppDatabase {
   @override
   AssetDao get assetDao {
     return _assetDaoInstance ??= _$AssetDao(database, changeListener);
+  }
+
+  @override
+  AssetFolderDao get assetFolderDao {
+    return _assetFolderDaoInstance ??=
+        _$AssetFolderDao(database, changeListener);
   }
 
   @override
@@ -520,12 +530,14 @@ class _$AssetDao extends AssetDao {
             'Asset',
             (Asset item) => <String, Object?>{
                   'id': item.id,
-                  'name': item.name,
+                  'folderId': item.folderId,
+                  'title': item.title,
                   'type': item.type,
-                  'filePath': item.filePath,
-                  'tags': item.tags,
                   'notes': item.notes,
-                  'createdAt': item.createdAt
+                  'imagePath': item.imagePath,
+                  'tags': item.tags,
+                  'createdAt': item.createdAt,
+                  'updatedAt': item.updatedAt
                 }),
         _assetUpdateAdapter = UpdateAdapter(
             database,
@@ -533,12 +545,14 @@ class _$AssetDao extends AssetDao {
             ['id'],
             (Asset item) => <String, Object?>{
                   'id': item.id,
-                  'name': item.name,
+                  'folderId': item.folderId,
+                  'title': item.title,
                   'type': item.type,
-                  'filePath': item.filePath,
-                  'tags': item.tags,
                   'notes': item.notes,
-                  'createdAt': item.createdAt
+                  'imagePath': item.imagePath,
+                  'tags': item.tags,
+                  'createdAt': item.createdAt,
+                  'updatedAt': item.updatedAt
                 }),
         _assetDeletionAdapter = DeletionAdapter(
             database,
@@ -546,12 +560,14 @@ class _$AssetDao extends AssetDao {
             ['id'],
             (Asset item) => <String, Object?>{
                   'id': item.id,
-                  'name': item.name,
+                  'folderId': item.folderId,
+                  'title': item.title,
                   'type': item.type,
-                  'filePath': item.filePath,
-                  'tags': item.tags,
                   'notes': item.notes,
-                  'createdAt': item.createdAt
+                  'imagePath': item.imagePath,
+                  'tags': item.tags,
+                  'createdAt': item.createdAt,
+                  'updatedAt': item.updatedAt
                 });
 
   final sqflite.DatabaseExecutor database;
@@ -567,32 +583,35 @@ class _$AssetDao extends AssetDao {
   final DeletionAdapter<Asset> _assetDeletionAdapter;
 
   @override
-  Future<List<Asset>> getAllAssets() async {
+  Future<List<Asset>> getAssetsByFolder(String folderId) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM Asset ORDER BY createdAt DESC',
+        'SELECT * FROM Asset WHERE folderId = ?1 ORDER BY updatedAt DESC',
         mapper: (Map<String, Object?> row) => Asset(
             id: row['id'] as String,
-            name: row['name'] as String,
+            folderId: row['folderId'] as String,
+            title: row['title'] as String,
             type: row['type'] as String,
-            filePath: row['filePath'] as String,
-            tags: row['tags'] as String?,
             notes: row['notes'] as String?,
-            createdAt: row['createdAt'] as int));
+            imagePath: row['imagePath'] as String?,
+            tags: row['tags'] as String?,
+            createdAt: row['createdAt'] as int,
+            updatedAt: row['updatedAt'] as int),
+        arguments: [folderId]);
   }
 
   @override
-  Future<List<Asset>> getAssetsByType(String type) async {
+  Future<List<Asset>> searchAssets(String query) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM Asset WHERE type = ?1 ORDER BY createdAt DESC',
-        mapper: (Map<String, Object?> row) => Asset(
-            id: row['id'] as String,
-            name: row['name'] as String,
-            type: row['type'] as String,
-            filePath: row['filePath'] as String,
-            tags: row['tags'] as String?,
-            notes: row['notes'] as String?,
-            createdAt: row['createdAt'] as int),
-        arguments: [type]);
+        'SELECT * FROM Asset      WHERE title LIKE ?1      OR notes LIKE ?1      OR tags LIKE ?1     ORDER BY updatedAt DESC',
+        mapper: (Map<String, Object?> row) => Asset(id: row['id'] as String, folderId: row['folderId'] as String, title: row['title'] as String, type: row['type'] as String, notes: row['notes'] as String?, imagePath: row['imagePath'] as String?, tags: row['tags'] as String?, createdAt: row['createdAt'] as int, updatedAt: row['updatedAt'] as int),
+        arguments: [query]);
+  }
+
+  @override
+  Future<List<String>> getAllTags() async {
+    return _queryAdapter.queryList(
+        'SELECT DISTINCT tags FROM Asset WHERE tags IS NOT NULL AND tags != \"\"',
+        mapper: (Map<String, Object?> row) => row.values.first as String);
   }
 
   @override
@@ -608,6 +627,80 @@ class _$AssetDao extends AssetDao {
   @override
   Future<void> deleteAsset(Asset asset) async {
     await _assetDeletionAdapter.delete(asset);
+  }
+}
+
+class _$AssetFolderDao extends AssetFolderDao {
+  _$AssetFolderDao(
+    this.database,
+    this.changeListener,
+  )   : _queryAdapter = QueryAdapter(database),
+        _assetFolderInsertionAdapter = InsertionAdapter(
+            database,
+            'AssetFolder',
+            (AssetFolder item) => <String, Object?>{
+                  'id': item.id,
+                  'name': item.name,
+                  'icon': item.icon,
+                  'createdAt': item.createdAt
+                }),
+        _assetFolderUpdateAdapter = UpdateAdapter(
+            database,
+            'AssetFolder',
+            ['id'],
+            (AssetFolder item) => <String, Object?>{
+                  'id': item.id,
+                  'name': item.name,
+                  'icon': item.icon,
+                  'createdAt': item.createdAt
+                }),
+        _assetFolderDeletionAdapter = DeletionAdapter(
+            database,
+            'AssetFolder',
+            ['id'],
+            (AssetFolder item) => <String, Object?>{
+                  'id': item.id,
+                  'name': item.name,
+                  'icon': item.icon,
+                  'createdAt': item.createdAt
+                });
+
+  final sqflite.DatabaseExecutor database;
+
+  final StreamController<String> changeListener;
+
+  final QueryAdapter _queryAdapter;
+
+  final InsertionAdapter<AssetFolder> _assetFolderInsertionAdapter;
+
+  final UpdateAdapter<AssetFolder> _assetFolderUpdateAdapter;
+
+  final DeletionAdapter<AssetFolder> _assetFolderDeletionAdapter;
+
+  @override
+  Future<List<AssetFolder>> getAllFolders() async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM AssetFolder ORDER BY createdAt ASC',
+        mapper: (Map<String, Object?> row) => AssetFolder(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            icon: row['icon'] as String,
+            createdAt: row['createdAt'] as int));
+  }
+
+  @override
+  Future<void> insertFolder(AssetFolder folder) async {
+    await _assetFolderInsertionAdapter.insert(folder, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> updateFolder(AssetFolder folder) async {
+    await _assetFolderUpdateAdapter.update(folder, OnConflictStrategy.abort);
+  }
+
+  @override
+  Future<void> deleteFolder(AssetFolder folder) async {
+    await _assetFolderDeletionAdapter.delete(folder);
   }
 }
 
