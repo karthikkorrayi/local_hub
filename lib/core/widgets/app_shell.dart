@@ -10,6 +10,7 @@ class AppShell extends StatelessWidget {
     (icon: Icons.favorite_outline, label: 'Wishlist', path: '/wishlist'),
     (icon: Icons.calendar_today,   label: 'Calendar', path: '/calendar'),
     (icon: Icons.folder_outlined,  label: 'Assets',   path: '/assets'),
+    (icon: Icons.settings_outlined,label: 'Settings', path: '/settings'),
   ];
 
   int _selectedIndex(BuildContext context) {
@@ -24,7 +25,6 @@ class AppShell extends StatelessWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     if (isWide) {
-      // macOS / tablet: left rail navigation
       return Scaffold(
         body: Row(
           children: [
@@ -47,7 +47,6 @@ class AppShell extends StatelessWidget {
       );
     }
 
-    // Android: bottom navigation bar
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(
