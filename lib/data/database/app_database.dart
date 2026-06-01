@@ -19,7 +19,6 @@ import '../daos/week_todo_dao.dart';
 
 part 'app_database.g.dart';
 
-// ── Migration 1 → 2 ───────────────────────────────────────────────────────────
 final migration1to2 = Migration(1, 2, (database) async {
   await database.execute('DROP TABLE IF EXISTS CalendarEvent');
   await database.execute('''
@@ -45,41 +44,30 @@ final migration1to2 = Migration(1, 2, (database) async {
   ''');
 });
 
-// ── Migration 2 → 3 ───────────────────────────────────────────────────────────
 final migration2to3 = Migration(2, 3, (database) async {
-  // Drop old flat Asset table
   await database.execute('DROP TABLE IF EXISTS Asset');
-
-  // New Asset table with folderId and imagePath
   await database.execute('''
     CREATE TABLE IF NOT EXISTS `Asset` (
-      `id` TEXT NOT NULL,
-      `folderId` TEXT NOT NULL,
-      `title` TEXT NOT NULL,
-      `type` TEXT NOT NULL,
-      `notes` TEXT,
-      `imagePath` TEXT,
-      `tags` TEXT,
-      `createdAt` INTEGER NOT NULL,
-      `updatedAt` INTEGER NOT NULL,
-      PRIMARY KEY (`id`)
+      `id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL,
+      `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT,
+      `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`)
     )
   ''');
-
-  // New AssetFolder table
   await database.execute('''
     CREATE TABLE IF NOT EXISTS `AssetFolder` (
-      `id` TEXT NOT NULL,
-      `name` TEXT NOT NULL,
-      `icon` TEXT NOT NULL,
-      `createdAt` INTEGER NOT NULL,
-      PRIMARY KEY (`id`)
+      `id` TEXT NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL,
+      `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`)
     )
   ''');
 });
 
+final migration3to4 = Migration(3, 4, (database) async {
+  await database.execute('ALTER TABLE Job ADD COLUMN resumePath TEXT');
+  await database.execute('ALTER TABLE Job ADD COLUMN appliedAt INTEGER');
+});
+
 @Database(
-  version: 3,
+  version: 4,
   entities: [Job, WishlistItem, CalendarEvent, Asset, AssetFolder, DayEntry, WeekTodo],
 )
 abstract class AppDatabase extends FloorDatabase {

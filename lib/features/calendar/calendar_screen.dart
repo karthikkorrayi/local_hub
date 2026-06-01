@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/android_theme.dart';
+import '../../core/widgets/app_card.dart';
 import '../../data/models/calendar_event.dart';
 import '../../data/models/day_entry.dart';
 import '../../data/models/week_todo.dart';
 import '../../data/models/job.dart';
 import 'calendar_provider.dart';
 
-// ── Category metadata ──────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 const _kCategories = ['payment', 'ticket', 'planning', 'free', 'other'];
 const _kCategoryLabels = {
   'payment':  '💳 Payment',
@@ -19,13 +22,12 @@ const _kCategoryLabels = {
   'other':    '📌 Other',
 };
 const _kCategoryColors = {
-  'payment':  Color(0xFFE53935),
-  'ticket':   Color(0xFF8E24AA),
-  'planning': Color(0xFF1E88E5),
-  'free':     Color(0xFF43A047),
-  'other':    Color(0xFF757575),
+  'payment':  Color(0xFFEF4444),
+  'ticket':   Color(0xFF8B5CF6),
+  'planning': Color(0xFF3B82F6),
+  'free':     Color(0xFF10B981),
+  'other':    Color(0xFF6B7280),
 };
-
 const _kMoods = ['😊', '😐', '😓', '🔥', '💼', '😴', '🎯', '💪'];
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
@@ -35,36 +37,63 @@ class CalendarScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isMonthView = ref.watch(calendarViewProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(
+      backgroundColor: AndroidTheme.surface,
       appBar: AppBar(
-        title: const Text('Calendar'),
+        title: Text(
+          'Calendar',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 20),
+        ),
         actions: [
-          // View toggle
-          SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: true,  label: Text('Month')),
-              ButtonSegment(value: false, label: Text('Week')),
-            ],
-            selected: {isMonthView},
-            onSelectionChanged: (s) =>
-                ref.read(calendarViewProvider.notifier).state = s.first,
-            style: const ButtonStyle(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: AndroidTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AndroidTheme.divider),
             ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Event',
-            onPressed: () => _showEventForm(context, ref),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ViewTab(
+                  label: 'Month',
+                  selected: isMonthView,
+                  onTap: () =>
+                      ref.read(calendarViewProvider.notifier).state = true,
+                ),
+                _ViewTab(
+                  label: 'Week',
+                  selected: !isMonthView,
+                  onTap: () =>
+                      ref.read(calendarViewProvider.notifier).state = false,
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: isWide
-          ? _WideLayout(isMonthView: isMonthView)
-          : _NarrowLayout(isMonthView: isMonthView),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 64),
+        child: FloatingActionButton(
+          onPressed: () => _showEventForm(context, ref),
+          backgroundColor: AndroidTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          child: const Icon(Icons.add_rounded),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: Column(
+        children: [
+          _CalendarCard(isMonthView: isMonthView),
+          Expanded(
+            child: _DayDetailPanel(
+              onEditEvent: (e) => _showEventForm(context, ref, existing: e),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -79,148 +108,284 @@ class CalendarScreen extends ConsumerWidget {
   }
 }
 
-// ── Wide layout: calendar left, detail right ───────────────────────────────────
-class _WideLayout extends ConsumerWidget {
-  final bool isMonthView;
-  const _WideLayout({required this.isMonthView});
+// ── View tab toggle ────────────────────────────────────────────────────────────
+class _ViewTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ViewTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 380,
-          child: _CalendarPanel(isMonthView: isMonthView),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AndroidTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
         ),
-        const VerticalDivider(width: 1),
-        Expanded(
-          child: _DayDetailPanel(
-            onEditEvent: (e) => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
-              builder: (_) => _EventFormSheet(ref: ref, existing: e),
-            ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AndroidTheme.textSecondary,
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-// ── Narrow layout: calendar top, detail below ──────────────────────────────────
-class _NarrowLayout extends ConsumerWidget {
+// ── Calendar card ──────────────────────────────────────────────────────────────
+class _CalendarCard extends ConsumerWidget {
   final bool isMonthView;
-  const _NarrowLayout({required this.isMonthView});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        _CalendarPanel(isMonthView: isMonthView),
-        const Divider(height: 1),
-        Expanded(
-          child: _DayDetailPanel(
-            onEditEvent: (e) => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
-              builder: (_) => _EventFormSheet(ref: ref, existing: e),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Calendar panel (month or week grid) ───────────────────────────────────────
-class _CalendarPanel extends ConsumerWidget {
-  final bool isMonthView;
-  const _CalendarPanel({required this.isMonthView});
+  const _CalendarCard({required this.isMonthView});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedDayProvider);
     final monthEvents = ref.watch(monthEventsProvider).valueOrNull ?? {};
+    final monthMoods = ref.watch(monthMoodProvider).valueOrNull ?? {};
 
-    return TableCalendar(
-      firstDay: DateTime(2020),
-      lastDay: DateTime(2030),
-      focusedDay: selected,
-      calendarFormat:
-          isMonthView ? CalendarFormat.month : CalendarFormat.week,
-      selectedDayPredicate: (day) => isSameDay(day, selected),
-      onDaySelected: (selectedDay, focusedDay) {
-        ref.read(selectedDayProvider.notifier).state = selectedDay;
-      },
-      onPageChanged: (focusedDay) {
-        ref.read(selectedDayProvider.notifier).state = focusedDay;
-      },
-      eventLoader: (day) {
-        final key = dateKey(day);
-        return monthEvents[key] ?? [];
-      },
-      calendarStyle: CalendarStyle(
-        selectedDecoration: BoxDecoration(
-          color: AppTheme.primary,
-          shape: BoxShape.circle,
+    return Container(
+      color: AndroidTheme.card,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TableCalendar(
+        firstDay: DateTime(2020),
+        lastDay: DateTime(2030),
+        focusedDay: selected,
+        rowHeight: 54,
+        calendarFormat: isMonthView
+            ? CalendarFormat.month
+            : CalendarFormat.week,
+        selectedDayPredicate: (day) => isSameDay(day, selected),
+        onDaySelected: (selectedDay, _) {
+          ref.read(selectedDayProvider.notifier).state = selectedDay;
+          _showDaySheet(context, ref, selectedDay);
+        },
+        onPageChanged: (focusedDay) {
+          ref.read(selectedDayProvider.notifier).state = focusedDay;
+        },
+        eventLoader: (day) {
+          final key = dateKey(day);
+          return monthEvents[key] ?? [];
+        },
+        calendarBuilders: CalendarBuilders(
+          // Default day — show number + mood emoji if exists
+          defaultBuilder: (context, day, focusedDay) {
+            final mood = monthMoods[dateKey(day)];
+            return _DayCell(
+              day: day,
+              mood: mood,
+              textColor: AndroidTheme.textPrimary,
+              bgColor: Colors.transparent,
+            );
+          },
+          // Today
+          todayBuilder: (context, day, focusedDay) {
+            final mood = monthMoods[dateKey(day)];
+            return _DayCell(
+              day: day,
+              mood: mood,
+              textColor: AndroidTheme.primary,
+              bgColor: AndroidTheme.primary.withValues(alpha: 0.12),
+              bold: true,
+            );
+          },
+          // Selected day
+          selectedBuilder: (context, day, focusedDay) {
+            final mood = monthMoods[dateKey(day)];
+            return _DayCell(
+              day: day,
+              mood: mood,
+              textColor: Colors.white,
+              bgColor: AndroidTheme.primary,
+              bold: true,
+            );
+          },
+          // Outside days (prev/next month)
+          outsideBuilder: (context, day, focusedDay) {
+            final mood = monthMoods[dateKey(day)];
+            return _DayCell(
+              day: day,
+              mood: mood,
+              textColor: AndroidTheme.textTertiary,
+              bgColor: Colors.transparent,
+            );
+          },
+          // Event dots
+          markerBuilder: (context, day, events) {
+            if (events.isEmpty) return const SizedBox.shrink();
+            return Positioned(
+              bottom: 3,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: events.take(3).map((_) => Container(
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  decoration: const BoxDecoration(
+                    color: AndroidTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                )).toList(),
+              ),
+            );
+          },
         ),
-        todayDecoration: BoxDecoration(
-          color: AppTheme.primary.withValues(alpha: 0.3),
-          shape: BoxShape.circle,
+        calendarStyle: const CalendarStyle(
+          outsideDaysVisible: true,
+          markersMaxCount: 3,
+          markerSize: 4,
+          cellMargin: EdgeInsets.all(3),
+          cellPadding: EdgeInsets.zero,
         ),
-        markerDecoration: const BoxDecoration(
-          color: Color(0xFFE53935),
-          shape: BoxShape.circle,
+        headerStyle: HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
+          titleTextStyle: GoogleFonts.inter(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: AndroidTheme.textPrimary,
+          ),
+          leftChevronIcon: const Icon(
+            Icons.chevron_left_rounded,
+            color: AndroidTheme.primary,
+          ),
+          rightChevronIcon: const Icon(
+            Icons.chevron_right_rounded,
+            color: AndroidTheme.primary,
+          ),
+          headerPadding: const EdgeInsets.symmetric(vertical: 8),
+        ),
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekdayStyle: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AndroidTheme.textTertiary,
+          ),
+          weekendStyle: GoogleFonts.inter(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: AndroidTheme.textTertiary,
+          ),
         ),
       ),
-      headerStyle: const HeaderStyle(
-        formatButtonVisible: false,
-        titleCentered: true,
+    );
+  }
+
+  void _showDaySheet(BuildContext context, WidgetRef ref, DateTime day) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _DaySheet(day: day, ref: ref),
+    );
+  }
+}
+
+// ── Reusable day cell widget ───────────────────────────────────────────────────
+class _DayCell extends StatelessWidget {
+  final DateTime day;
+  final String? mood;
+  final Color textColor;
+  final Color bgColor;
+  final bool bold;
+
+  const _DayCell({
+    required this.day,
+    required this.mood,
+    required this.textColor,
+    required this.bgColor,
+    this.bold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '${day.day}',
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+              color: textColor,
+              height: 1,
+            ),
+          ),
+          if (mood != null) ...[
+            const SizedBox(height: 1),
+            Text(
+              mood!,
+              style: const TextStyle(fontSize: 10, height: 1),
+            ),
+          ] else
+            const SizedBox(height: 11), // keep cell height consistent
+        ],
       ),
     );
   }
 }
 
-// ── Day detail panel ───────────────────────────────────────────────────────────
-class _DayDetailPanel extends ConsumerWidget {
-  final void Function(CalendarEvent) onEditEvent;
-  const _DayDetailPanel({required this.onEditEvent});
+// ── Day bottom sheet ───────────────────────────────────────────────────────────
+class _DaySheet extends ConsumerStatefulWidget {
+  final DateTime day;
+  final WidgetRef ref;
+  const _DaySheet({required this.day, required this.ref});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(selectedDayProvider);
-    final eventsAsync = ref.watch(dayEventsProvider);
-    final entryAsync = ref.watch(dayEntryProvider);
-    final todosAsync = ref.watch(weekTodosProvider);
+  ConsumerState<_DaySheet> createState() => _DaySheetState();
+}
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Date header
-        Text(
-          _formatDate(selected),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
+class _DaySheetState extends ConsumerState<_DaySheet> {
+  late TextEditingController _diary;
+  String? _selectedMood;
+  bool _loadedEntry = false;
 
-        // Mood + diary section
-        _MoodDiarySection(entryAsync: entryAsync),
-        const SizedBox(height: 16),
+  bool get _isEditable {
+    final now = DateTime.now();
+    final d = widget.day;
+    return d.year > now.year ||
+        (d.year == now.year && d.month > now.month) ||
+        (d.year == now.year && d.month == now.month && d.day >= now.day);
+  }
 
-        // Week todos section
-        _WeekTodoSection(todosAsync: todosAsync),
-        const SizedBox(height: 16),
+  @override
+  void initState() {
+    super.initState();
+    _diary = TextEditingController();
+  }
 
-        // Events section
-        _EventsSection(
-          eventsAsync: eventsAsync,
-          onEdit: onEditEvent,
-        ),
-      ],
+  @override
+  void dispose() {
+    _diary.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final actions = await ref.read(calendarActionsProvider.future);
+    final entry = DayEntry(
+      id: ref.read(dayEntryProvider).valueOrNull?.id ?? const Uuid().v4(),
+      date: dateKey(widget.day),
+      mood: _selectedMood,
+      diary: _diary.text.trim().isEmpty ? null : _diary.text.trim(),
     );
+    await actions.saveDayEntry(entry);
   }
 
   String _formatDate(DateTime d) {
@@ -234,125 +399,198 @@ class _DayDetailPanel extends ConsumerWidget {
     ];
     return '${days[d.weekday]}, ${months[d.month]} ${d.day}';
   }
-}
-
-// ── Mood + diary ───────────────────────────────────────────────────────────────
-class _MoodDiarySection extends ConsumerStatefulWidget {
-  final AsyncValue<DayEntry?> entryAsync;
-  const _MoodDiarySection({required this.entryAsync});
-
-  @override
-  ConsumerState<_MoodDiarySection> createState() => _MoodDiarySectionState();
-}
-
-class _MoodDiarySectionState extends ConsumerState<_MoodDiarySection> {
-  late TextEditingController _diary;
-  String? _selectedMood;
-  bool _expanded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _diary = TextEditingController();
-  }
-
-  @override
-  void didUpdateWidget(_MoodDiarySection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    widget.entryAsync.whenData((entry) {
-      if (entry != null) {
-        _selectedMood = entry.mood;
-        if (_diary.text != (entry.diary ?? '')) {
-          _diary.text = entry.diary ?? '';
-        }
-      } else {
-        _selectedMood = null;
-        _diary.clear();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _diary.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final selected = ref.read(selectedDayProvider);
-    final actions = await ref.read(calendarActionsProvider.future);
-    final entry = DayEntry(
-      id: ref.read(dayEntryProvider).valueOrNull?.id ?? const Uuid().v4(),
-      date: dateKey(selected),
-      mood: _selectedMood,
-      diary: _diary.text.trim().isEmpty ? null : _diary.text.trim(),
-    );
-    await actions.saveDayEntry(entry);
-  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    final entryAsync = ref.watch(dayEntryProvider);
+    final eventsAsync = ref.watch(dayEventsProvider);
+    final todosAsync = ref.watch(weekTodosProvider);
+    final isPast = !_isEditable;
+
+    // Load entry data once
+    entryAsync.whenData((entry) {
+      if (!_loadedEntry && entry != null) {
+        _loadedEntry = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedMood = entry.mood;
+              _diary.text = entry.diary ?? '';
+            });
+          }
+        });
+      }
+    });
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.88,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: AndroidTheme.card,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Text('Mood & Diary',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                const Spacer(),
-                IconButton(
-                  icon: Icon(
-                      _expanded ? Icons.expand_less : Icons.expand_more),
-                  onPressed: () =>
-                      setState(() => _expanded = !_expanded),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-            // Mood picker
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: _kMoods.map((emoji) {
-                final selected = _selectedMood == emoji;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedMood =
-                        selected ? null : emoji);
-                    _save();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppTheme.primary.withValues(alpha: 0.15)
-                          : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                      border: selected
-                          ? Border.all(color: AppTheme.primary)
-                          : null,
-                    ),
-                    child: Text(emoji, style: const TextStyle(fontSize: 22)),
-                  ),
-                );
-              }).toList(),
-            ),
-            if (_expanded) ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _diary,
-                decoration: const InputDecoration(
-                  hintText: 'Write your diary note for today…',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 4,
-                onChanged: (_) => _save(),
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AndroidTheme.divider,
+                borderRadius: BorderRadius.circular(2),
               ),
-            ],
+            ),
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                children: [
+                  // Date header
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _formatDate(widget.day),
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AndroidTheme.textPrimary,
+                          ),
+                        ),
+                      ),
+                      if (isPast)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AndroidTheme.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Past day',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: AndroidTheme.textTertiary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Mood section ───────────────────────────────────────
+                  Text(
+                    isPast ? 'Mood' : 'How are you feeling?',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AndroidTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _kMoods.map((emoji) {
+                      final isSelected = _selectedMood == emoji;
+                      return GestureDetector(
+                        onTap: isPast
+                            ? null
+                            : () {
+                                setState(() => _selectedMood =
+                                    isSelected ? null : emoji);
+                                _save();
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AndroidTheme.primaryLight
+                                : AndroidTheme.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AndroidTheme.primary
+                                  : AndroidTheme.divider,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Text(
+                            emoji,
+                            style: const TextStyle(fontSize: 26),
+                          ),
+                        ),
+                      )
+                          .animate()
+                          .scale(duration: 150.ms, curve: Curves.easeOut);
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Diary section ──────────────────────────────────────
+                  Text(
+                    'Diary',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AndroidTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AppCard(
+                    child: TextField(
+                      controller: _diary,
+                      readOnly: isPast,
+                      maxLines: 4,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: AndroidTheme.textPrimary,
+                        height: 1.5,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: isPast
+                            ? 'No diary entry for this day'
+                            : 'Write your thoughts…',
+                        hintStyle: GoogleFonts.inter(
+                          color: AndroidTheme.textTertiary,
+                          fontSize: 14,
+                        ),
+                        border: InputBorder.none,
+                        filled: false,
+                        contentPadding: const EdgeInsets.all(14),
+                      ),
+                      onChanged: (_) => _save(),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Week todos ─────────────────────────────────────────
+                  _WeekTodoInSheet(todosAsync: todosAsync),
+                  const SizedBox(height: 20),
+
+                  // ── Events ────────────────────────────────────────────
+                  _EventsInSheet(
+                    eventsAsync: eventsAsync,
+                    onEdit: (e) {
+                      Navigator.of(context).pop();
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) =>
+                            _EventFormSheet(ref: ref, existing: e),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -360,77 +598,190 @@ class _MoodDiarySectionState extends ConsumerState<_MoodDiarySection> {
   }
 }
 
-// ── Week todos ─────────────────────────────────────────────────────────────────
-class _WeekTodoSection extends ConsumerStatefulWidget {
-  final AsyncValue<List<WeekTodo>> todosAsync;
-  const _WeekTodoSection({required this.todosAsync});
+// ── Day detail panel (shown below calendar) ────────────────────────────────────
+class _DayDetailPanel extends ConsumerWidget {
+  final void Function(CalendarEvent) onEditEvent;
+  const _DayDetailPanel({required this.onEditEvent});
 
   @override
-  ConsumerState<_WeekTodoSection> createState() => _WeekTodoSectionState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedDayProvider);
+    final eventsAsync = ref.watch(dayEventsProvider);
+    final entryAsync = ref.watch(dayEntryProvider);
+
+    String _shortDate(DateTime d) {
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      const months = [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return '${days[d.weekday - 1]}, ${months[d.month]} ${d.day}';
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+      children: [
+        // Date + mood row
+        Row(
+          children: [
+            Text(
+              _shortDate(selected),
+              style: GoogleFonts.inter(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AndroidTheme.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            entryAsync.when(
+              data: (entry) => entry?.mood != null
+                  ? Text(
+                      entry!.mood!,
+                      style: const TextStyle(fontSize: 22),
+                    )
+                  : const SizedBox.shrink(),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Events quick list
+        eventsAsync.when(
+          data: (events) => events.isEmpty
+              ? AppCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.touch_app_rounded,
+                        color: AndroidTheme.textTertiary,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Tap a date to view or add details',
+                        style: GoogleFonts.inter(
+                          color: AndroidTheme.textTertiary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : AppCard(
+                  child: Column(
+                    children: events
+                        .map((e) => _EventTile(event: e, onEdit: onEditEvent))
+                        .toList(),
+                  ),
+                ),
+          loading: () =>
+              const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Error: $e'),
+        ),
+      ],
+    );
+  }
 }
 
-class _WeekTodoSectionState extends ConsumerState<_WeekTodoSection> {
-  final _controller = TextEditingController();
+// ── Week todos in sheet ────────────────────────────────────────────────────────
+class _WeekTodoInSheet extends ConsumerStatefulWidget {
+  final AsyncValue<List<WeekTodo>> todosAsync;
+  const _WeekTodoInSheet({required this.todosAsync});
+
+  @override
+  ConsumerState<_WeekTodoInSheet> createState() => _WeekTodoInSheetState();
+}
+
+class _WeekTodoInSheetState extends ConsumerState<_WeekTodoInSheet> {
+  final _ctrl = TextEditingController();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
-  Future<void> _addTodo() async {
-    if (_controller.text.trim().isEmpty) return;
+  Future<void> _add() async {
+    if (_ctrl.text.trim().isEmpty) return;
     final selected = ref.read(selectedDayProvider);
     final actions = await ref.read(calendarActionsProvider.future);
     await actions.addTodo(WeekTodo(
       id: const Uuid().v4(),
       weekStart: weekStartKey(selected),
-      title: _controller.text.trim(),
+      title: _ctrl.text.trim(),
       isDone: false,
       createdAt: DateTime.now().millisecondsSinceEpoch,
     ));
-    _controller.clear();
+    _ctrl.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     final todos = widget.todosAsync.valueOrNull ?? [];
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('This Week\'s Todos',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ...todos.map((todo) => _TodoTile(todo: todo)),
-            // Add todo input
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Add a todo for this week…',
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) => _addTodo(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add, size: 20),
-                  onPressed: _addTodo,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "This Week's Todos",
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AndroidTheme.textSecondary,
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        AppCard(
+          child: Column(
+            children: [
+              ...todos.map((todo) => _TodoTile(todo: todo)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _ctrl,
+                        style: GoogleFonts.inter(fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Add todo for this week…',
+                          hintStyle: GoogleFonts.inter(
+                            color: AndroidTheme.textTertiary,
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                          filled: false,
+                          contentPadding: EdgeInsets.zero,
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => _add(),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: _add,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AndroidTheme.primaryLight,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          color: AndroidTheme.primary,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -441,90 +792,118 @@ class _TodoTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        Checkbox(
-          value: todo.isDone,
-          onChanged: (_) async {
-            final actions =
-                await ref.read(calendarActionsProvider.future);
-            await actions.toggleTodo(todo);
-          },
-        ),
-        Expanded(
-          child: Text(
-            todo.title,
-            style: TextStyle(
-              decoration:
-                  todo.isDone ? TextDecoration.lineThrough : null,
-              color: todo.isDone ? Colors.grey : null,
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      leading: GestureDetector(
+        onTap: () async {
+          final actions = await ref.read(calendarActionsProvider.future);
+          await actions.toggleTodo(todo);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: todo.isDone ? AndroidTheme.primary : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: todo.isDone ? AndroidTheme.primary : AndroidTheme.divider,
+              width: 1.5,
             ),
           ),
+          child: todo.isDone
+              ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
+              : null,
         ),
-        IconButton(
-          icon: const Icon(Icons.close, size: 16),
-          color: Colors.grey.shade400,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          onPressed: () async {
-            final actions =
-                await ref.read(calendarActionsProvider.future);
-            await actions.deleteTodo(todo);
-          },
+      ),
+      title: Text(
+        todo.title,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          color: todo.isDone
+              ? AndroidTheme.textTertiary
+              : AndroidTheme.textPrimary,
+          decoration: todo.isDone ? TextDecoration.lineThrough : null,
         ),
-      ],
-    );
-  }
-}
-
-// ── Events section ─────────────────────────────────────────────────────────────
-class _EventsSection extends ConsumerWidget {
-  final AsyncValue<List<CalendarEvent>> eventsAsync;
-  final void Function(CalendarEvent) onEdit;
-  const _EventsSection(
-      {required this.eventsAsync, required this.onEdit});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final events = eventsAsync.valueOrNull ?? [];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Events',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            if (events.isEmpty)
-              Text('No events for this day',
-                  style: TextStyle(
-                      color: Colors.grey.shade400, fontSize: 13))
-            else
-              ...events.map((e) => _EventTile(
-                    event: e,
-                    onEdit: onEdit,
-                  )),
-          ],
+      ),
+      trailing: GestureDetector(
+        onTap: () async {
+          final actions = await ref.read(calendarActionsProvider.future);
+          await actions.deleteTodo(todo);
+        },
+        child: Icon(
+          Icons.close_rounded,
+          size: 16,
+          color: AndroidTheme.textTertiary,
         ),
       ),
     );
   }
 }
 
+// ── Events in sheet ────────────────────────────────────────────────────────────
+class _EventsInSheet extends ConsumerWidget {
+  final AsyncValue<List<CalendarEvent>> eventsAsync;
+  final void Function(CalendarEvent) onEdit;
+
+  const _EventsInSheet({required this.eventsAsync, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = eventsAsync.valueOrNull ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Events',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AndroidTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        events.isEmpty
+            ? AppCard(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'No events for this day',
+                  style: GoogleFonts.inter(
+                    color: AndroidTheme.textTertiary,
+                    fontSize: 13,
+                  ),
+                ),
+              )
+            : AppCard(
+                child: Column(
+                  children: events
+                      .map((e) => _EventTile(event: e, onEdit: onEdit))
+                      .toList(),
+                ),
+              ),
+      ],
+    );
+  }
+}
+
+// ── Event tile ─────────────────────────────────────────────────────────────────
 class _EventTile extends ConsumerWidget {
   final CalendarEvent event;
   final void Function(CalendarEvent) onEdit;
+
   const _EventTile({required this.event, required this.onEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final color =
-        _kCategoryColors[event.category] ?? const Color(0xFF757575);
+        _kCategoryColors[event.category] ?? const Color(0xFF6B7280);
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
+      onTap: () => onEdit(event),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 4,
         height: 40,
@@ -533,19 +912,33 @@ class _EventTile extends ConsumerWidget {
           borderRadius: BorderRadius.circular(2),
         ),
       ),
-      title: Text(event.title,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      title: Text(
+        event.title,
+        style: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AndroidTheme.textPrimary,
+        ),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (event.startTime != null)
-            Text('${event.startTime} ${event.endTime != null ? '→ ${event.endTime}' : ''}',
-                style: TextStyle(
-                    color: Colors.grey.shade500, fontSize: 12)),
+            Text(
+              '${event.startTime}${event.endTime != null ? ' → ${event.endTime}' : ''}',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: AndroidTheme.textSecondary,
+              ),
+            ),
           if (event.linkedJobTitle != null)
-            Text('🔗 ${event.linkedJobTitle}',
-                style: TextStyle(
-                    color: AppTheme.primary, fontSize: 12)),
+            Text(
+              '🔗 ${event.linkedJobTitle}',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: AndroidTheme.primary,
+              ),
+            ),
         ],
       ),
       trailing: Row(
@@ -553,29 +946,31 @@ class _EventTile extends ConsumerWidget {
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               _kCategoryLabels[event.category] ?? event.category,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600),
+              style: GoogleFonts.inter(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 16),
-            color: Colors.grey.shade400,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => _confirmDelete(context, ref),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _confirmDelete(context, ref),
+            child: Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: AndroidTheme.textTertiary,
+            ),
           ),
         ],
       ),
-      onTap: () => onEdit(event),
     );
   }
 
@@ -597,8 +992,8 @@ class _EventTile extends ConsumerWidget {
                   await ref.read(calendarActionsProvider.future);
               await actions.deleteEvent(event);
             },
-            child: const Text('Delete',
-                style: TextStyle(color: Colors.red)),
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -638,8 +1033,10 @@ class _EventFormSheetState extends State<_EventFormSheet> {
 
   @override
   void dispose() {
-    _title.dispose(); _description.dispose();
-    _startTime.dispose(); _endTime.dispose();
+    _title.dispose();
+    _description.dispose();
+    _startTime.dispose();
+    _endTime.dispose();
     super.dispose();
   }
 
@@ -665,10 +1062,16 @@ class _EventFormSheetState extends State<_EventFormSheet> {
     final event = CalendarEvent(
       id:             existing?.id ?? const Uuid().v4(),
       title:          _title.text.trim(),
-      description:    _description.text.trim().isEmpty ? null : _description.text.trim(),
+      description:    _description.text.trim().isEmpty
+          ? null
+          : _description.text.trim(),
       date:           dateKey(selected),
-      startTime:      _startTime.text.trim().isEmpty ? null : _startTime.text.trim(),
-      endTime:        _endTime.text.trim().isEmpty ? null : _endTime.text.trim(),
+      startTime:      _startTime.text.trim().isEmpty
+          ? null
+          : _startTime.text.trim(),
+      endTime:        _endTime.text.trim().isEmpty
+          ? null
+          : _endTime.text.trim(),
       category:       _category,
       linkedJobId:    _linkedJob?.id,
       linkedJobTitle: _linkedJob?.title,
@@ -692,31 +1095,29 @@ class _EventFormSheetState extends State<_EventFormSheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          24, 24, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+          20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(isEdit ? 'Edit Event' : 'Add Event',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              isEdit ? 'Edit Event' : 'Add Event',
+              style: GoogleFonts.inter(
+                  fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 16),
+
             TextField(
               controller: _title,
-              decoration: const InputDecoration(
-                labelText: 'Title *',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Title *'),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
+
             DropdownButtonFormField<String>(
               value: _category,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Category'),
               items: _kCategories
                   .map((c) => DropdownMenuItem(
                         value: c,
@@ -726,6 +1127,7 @@ class _EventFormSheetState extends State<_EventFormSheet> {
               onChanged: (v) => setState(() => _category = v ?? _category),
             ),
             const SizedBox(height: 12),
+
             Row(
               children: [
                 Expanded(
@@ -733,9 +1135,9 @@ class _EventFormSheetState extends State<_EventFormSheet> {
                     controller: _startTime,
                     readOnly: true,
                     decoration: const InputDecoration(
-                      labelText: 'Start time',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.access_time),
+                      labelText: 'Start',
+                      suffixIcon:
+                          Icon(Icons.access_time_rounded, size: 18),
                     ),
                     onTap: () => _pickTime(_startTime),
                   ),
@@ -746,9 +1148,9 @@ class _EventFormSheetState extends State<_EventFormSheet> {
                     controller: _endTime,
                     readOnly: true,
                     decoration: const InputDecoration(
-                      labelText: 'End time',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.access_time),
+                      labelText: 'End',
+                      suffixIcon:
+                          Icon(Icons.access_time_rounded, size: 18),
                     ),
                     onTap: () => _pickTime(_endTime),
                   ),
@@ -756,25 +1158,21 @@ class _EventFormSheetState extends State<_EventFormSheet> {
               ],
             ),
             const SizedBox(height: 12),
+
             TextField(
               controller: _description,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Description'),
               maxLines: 2,
             ),
             const SizedBox(height: 12),
-            // Job linkage picker
+
             jobsAsync.when(
               data: (jobs) => jobs.isEmpty
                   ? const SizedBox.shrink()
                   : DropdownButtonFormField<Job?>(
                       value: _linkedJob,
                       decoration: const InputDecoration(
-                        labelText: '🔗 Link to Job (reminder)',
-                        border: OutlineInputBorder(),
-                      ),
+                          labelText: '🔗 Link to Job'),
                       items: [
                         const DropdownMenuItem(
                             value: null, child: Text('None')),
@@ -792,6 +1190,7 @@ class _EventFormSheetState extends State<_EventFormSheet> {
               error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 20),
+
             FilledButton(
               onPressed: _saving ? null : _save,
               child: Text(_saving

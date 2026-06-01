@@ -11,12 +11,8 @@ final jobListProvider = FutureProvider<List<Job>>((ref) async {
 final kanbanColumnsProvider = Provider<Map<String, List<Job>>>((ref) {
   const statuses = ['wishlist', 'applied', 'interview', 'offer', 'rejected'];
   final jobsAsync = ref.watch(jobListProvider);
-
   return jobsAsync.when(
-    data: (jobs) => {
-      for (final s in statuses)
-        s: jobs.where((j) => j.status == s).toList(),
-    },
+    data: (jobs) => {for (final s in statuses) s: jobs.where((j) => j.status == s).toList()},
     loading: () => {for (final s in statuses) s: []},
     error: (_, __) => {for (final s in statuses) s: []},
   );
@@ -43,7 +39,6 @@ class JobActions {
   }
 }
 
-// ← No async here. Returns JobActions directly, not a Future.
 final jobActionsProvider = FutureProvider<JobActions>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   return JobActions(db.jobDao, ref);

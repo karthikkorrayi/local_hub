@@ -57,6 +57,17 @@ class AssetsScreen extends ConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 64),
+        child: FloatingActionButton(
+          onPressed: () => _showAssetForm(context, ref),
+          backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: isWide
           ? _WideLayout(
               onEditAsset: (a) => _showAssetForm(context, ref, existing: a),

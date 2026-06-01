@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="13sp"
+            android:textColor="#6B7280"
+            android:fontFamily="sans-serif-medium"
+            android:text="Today"/>
+        <TextView
+            android:id="@+id/widget_mood"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:text=""/>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#EEEEF2"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TODAY'S EVENTS"
+        android:textSize="10sp"
+        android:textColor="#1EC86A"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="8dp"/>
+
+    <LinearLayout
+        android:id="@+id/event_1_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
+        <View android:layout_width="6dp" android:layout_height="6dp"
+            android:background="@drawable/dot_green" android:layout_marginEnd="8dp"/>
+        <TextView android:id="@+id/event_1_title"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#1A1F36" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/event_1_time"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="11sp" android:textColor="#6B7280"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/event_2_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp"
+        android:visibility="gone">
+        <View android:layout_width="6dp" android:layout_height="6dp"
+            android:background="@drawable/dot_green" android:layout_marginEnd="8dp"/>
+        <TextView android:id="@+id/event_2_title"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#1A1F36" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/event_2_time"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="11sp" android:textColor="#6B7280"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/event_3_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+        <View android:layout_width="6dp" android:layout_height="6dp"
+            android:background="@drawable/dot_green" android:layout_marginEnd="8dp"/>
+        <TextView android:id="@+id/event_3_title"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:textSize="13sp"
+            android:textColor="#1A1F36" android:maxLines="1" android:ellipsize="end"/>
+        <TextView android:id="@+id/event_3_time"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="11sp" android:textColor="#6B7280"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No events today"
+        android:textSize="13sp"
+        android:textColor="#6B7280"
+        android:visibility="gone"/>
+
+</LinearLayout>

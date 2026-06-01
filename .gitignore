@@ -45,3 +45,13 @@ app.*.map.json
 /android/app/release
 
 lib/core/backup/google_credentials.dart
+
+# Flutter/Dart
+build/
+android/app/build/
+ios/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.apk
+*.ipa

@@ -5,7 +5,6 @@ class AppTheme {
   static const Color surface = Color(0xFFF8F9FA);
   static const Color cardBackground = Colors.white;
 
-  // Kanban status colors
   static const Color statusWishlist  = Color(0xFF9E9E9E);
   static const Color statusApplied   = Color(0xFF1A73E8);
   static const Color statusInterview = Color(0xFFF9A825);

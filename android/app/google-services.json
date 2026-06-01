@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "532982592911",
+    "project_id": "local-hub-backup",
+    "storage_bucket": "local-hub-backup.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532982592911:android:c9549f59bf2f6c44a587fa",
+        "android_client_info": {
+          "package_name": "com.karthik.local_hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "532982592911-5katl21smm2fe9jejsk2r704l34qs28h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.karthik.local_hub",
+            "certificate_hash": "159b0dd56cdf1e2cf609614d95f4a38edc2e0a94"
+          }
+        },
+        {
+          "client_id": "532982592911-8t873lharge8arvu1dgnjf98mlnc33k2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD88on0uWJh5DV8PwapkziWF4BAPdh7HtY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "532982592911-8t873lharge8arvu1dgnjf98mlnc33k2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

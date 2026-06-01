@@ -1,43 +1,119 @@
+import 'dart:io';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/android_theme.dart';
+import '../../core/widgets/app_card.dart';
 import '../../data/models/job.dart';
 import 'job_provider.dart';
 
-// ── Column metadata ────────────────────────────────────────────────────────────
 const _kStatuses = ['wishlist', 'applied', 'interview', 'offer', 'rejected'];
 const _kLabels = {
-  'wishlist':  'Wishlist',
-  'applied':   'Applied',
-  'interview': 'Interview',
-  'offer':     'Offer',
-  'rejected':  'Rejected',
+  'wishlist': 'Wishlist', 'applied': 'Applied',
+  'interview': 'Interview', 'offer': 'Offer', 'rejected': 'Rejected',
+};
+const _kStatusColors = {
+  'wishlist':  Color(0xFF9CA3AF), 'applied':   Color(0xFF1EC86A),
+  'interview': Color(0xFFF59E0B), 'offer':     Color(0xFF10B981),
+  'rejected':  Color(0xFFEF4444),
+};
+const _kStatusIcons = {
+  'wishlist':  Icons.bookmark_outline_rounded,
+  'applied':   Icons.send_rounded,
+  'interview': Icons.people_outline_rounded,
+  'offer':     Icons.celebration_outlined,
+  'rejected':  Icons.cancel_outlined,
 };
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
-class JobsScreen extends ConsumerWidget {
+class JobsScreen extends ConsumerStatefulWidget {
   const JobsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<JobsScreen> createState() => _JobsScreenState();
+}
+
+class _JobsScreenState extends ConsumerState<JobsScreen>
+    with SingleTickerProviderStateMixin {
+  late PageController _pageController;
+  int _currentIndex = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToStatus(int index) {
+    setState(() => _currentIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final columns = ref.watch(kanbanColumnsProvider);
-    final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(
+      backgroundColor: AndroidTheme.surface,
       appBar: AppBar(
-        title: const Text('Job Tracker'),
+        title: Text('Job Tracker',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 20)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Job',
-            onPressed: () => _showJobForm(context, ref),
+          if (!Platform.isAndroid)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => _showJobForm(context, ref),
+            ),
+        ],
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 64),
+        child: FloatingActionButton(
+          onPressed: () => _showJobForm(context, ref),
+          backgroundColor: AndroidTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: Column(
+        children: [
+          _StatusPipelineBar(
+            currentIndex: _currentIndex,
+            columns: columns,
+            onTap: _goToStatus,
+          ),
+          Expanded(
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (i) => setState(() => _currentIndex = i),
+              itemCount: _kStatuses.length,
+              itemBuilder: (_, i) {
+                final status = _kStatuses[i];
+                return _JobList(
+                  status: status,
+                  jobs: columns[status] ?? [],
+                  onEdit: (job) => _showJobForm(context, ref, existing: job),
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: isWide
-          ? _WideKanban(columns: columns, onEdit: (job) => _showJobForm(context, ref, existing: job))
-          : _NarrowKanban(columns: columns, onEdit: (job) => _showJobForm(context, ref, existing: job)),
     );
   }
 
@@ -51,165 +127,148 @@ class JobsScreen extends ConsumerWidget {
   }
 }
 
-// ── Wide layout: horizontal scrolling lanes ────────────────────────────────────
-class _WideKanban extends StatelessWidget {
+// ── Status pipeline bar ────────────────────────────────────────────────────────
+class _StatusPipelineBar extends StatelessWidget {
+  final int currentIndex;
   final Map<String, List<Job>> columns;
-  final void Function(Job) onEdit;
-  const _WideKanban({required this.columns, required this.onEdit});
+  final void Function(int) onTap;
+
+  const _StatusPipelineBar({
+    required this.currentIndex,
+    required this.columns,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(16),
-      itemCount: _kStatuses.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
-      itemBuilder: (_, i) {
-        final status = _kStatuses[i];
-        return _KanbanColumn(
-          status: status,
-          jobs: columns[status] ?? [],
-          width: 280,
-          onEdit: onEdit,
-        );
-      },
-    );
-  }
-}
+    return Container(
+      color: AndroidTheme.card,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        children: [
+          Row(
+            children: List.generate(_kStatuses.length * 2 - 1, (i) {
+              if (i.isOdd) {
+                final leftIndex = i ~/ 2;
+                final active = leftIndex < currentIndex;
+                return Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: 2,
+                    color: active ? AndroidTheme.primary : AndroidTheme.divider,
+                  ),
+                );
+              }
+              final index = i ~/ 2;
+              final status = _kStatuses[index];
+              final color = _kStatusColors[status]!;
+              final isActive = index == currentIndex;
+              final isPast = index < currentIndex;
 
-// ── Narrow layout: one column at a time via chip switcher ──────────────────────
-class _NarrowKanban extends StatefulWidget {
-  final Map<String, List<Job>> columns;
-  final void Function(Job) onEdit;
-  const _NarrowKanban({required this.columns, required this.onEdit});
+              return GestureDetector(
+                onTap: () => onTap(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: isActive || isPast ? color : AndroidTheme.surface,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isActive || isPast ? color : AndroidTheme.divider,
+                      width: 2,
+                    ),
+                  ),
+                  child: Icon(
+                    _kStatusIcons[status],
+                    size: 14,
+                    color: isActive || isPast ? Colors.white : AndroidTheme.textTertiary,
+                  ),
+                ),
+              ).animate(target: isActive ? 1 : 0).scale(
+                    begin: const Offset(1, 1),
+                    end: const Offset(1.15, 1.15),
+                    duration: 200.ms,
+                    curve: Curves.easeOut,
+                  );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(_kStatuses.length, (i) {
+              final status = _kStatuses[i];
+              final color = _kStatusColors[status]!;
+              final isActive = i == currentIndex;
+              final count = columns[status]?.length ?? 0;
 
-  @override
-  State<_NarrowKanban> createState() => _NarrowKanbanState();
-}
-
-class _NarrowKanbanState extends State<_NarrowKanban> {
-  String _active = 'applied';
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Status chip switcher
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            children: _kStatuses.map((s) {
-              final selected = s == _active;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8, top: 8),
-                child: ChoiceChip(
-                  label: Text(_kLabels[s]!),
-                  selected: selected,
-                  selectedColor: AppTheme.statusColor(s).withValues(alpha: 0.2),
-                  onSelected: (_) => setState(() => _active = s),
+              return GestureDetector(
+                onTap: () => onTap(i),
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isActive ? color : AndroidTheme.textTertiary,
+                  ),
+                  child: Text(
+                    '${_kLabels[status]}\n$count',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               );
-            }).toList(),
+            }),
           ),
-        ),
-        // Active column fills remaining space
-        Expanded(
-          child: _KanbanColumn(
-            status: _active,
-            jobs: widget.columns[_active] ?? [],
-            width: double.infinity,
-            onEdit: widget.onEdit,
-          ),
-        ),
-      ],
+          const SizedBox(height: 12),
+        ],
+      ),
     );
   }
 }
 
-// ── Shared column widget ────────────────────────────────────────────────────────
-class _KanbanColumn extends ConsumerWidget {
+// ── Job list ───────────────────────────────────────────────────────────────────
+class _JobList extends StatelessWidget {
   final String status;
   final List<Job> jobs;
-  final double width;
   final void Function(Job) onEdit;
 
-  const _KanbanColumn({
+  const _JobList({
     required this.status,
     required this.jobs,
-    required this.width,
     required this.onEdit,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final color = AppTheme.statusColor(status);
+  Widget build(BuildContext context) {
+    if (jobs.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _kStatusIcons[status],
+              size: 48,
+              color: AndroidTheme.textTertiary.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No ${_kLabels[status]} jobs',
+              style: GoogleFonts.inter(
+                  color: AndroidTheme.textTertiary, fontSize: 15),
+            ),
+          ],
+        ),
+      );
+    }
 
-    return SizedBox(
-      width: width,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Column header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _kLabels[status]!,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${jobs.length}',
-                    style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Job cards
-          Expanded(
-            child: jobs.isEmpty
-                ? Center(
-                    child: Text(
-                      'No jobs here',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(8),
-                    itemCount: jobs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) => _JobCard(
-                      job: jobs[i],
-                      onEdit: onEdit,
-                    ),
-                  ),
-          ),
-        ],
-      ),
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+      itemCount: jobs.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) => _JobCard(job: jobs[i], onEdit: onEdit)
+          .animate()
+          .fadeIn(delay: (i * 50).ms, duration: 300.ms)
+          .slideY(begin: 0.1, end: 0, duration: 300.ms),
     );
   }
 }
@@ -223,70 +282,122 @@ class _JobCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final color = AppTheme.statusColor(job.status);
+    final color = _kStatusColors[job.status] ?? AndroidTheme.textTertiary;
+    final hasResume = job.resumePath != null && job.resumePath!.isNotEmpty;
 
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => onEdit(job),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return AppCard(
+      onTap: () => _showPreview(context, ref),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.title,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AndroidTheme.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        job.company,
+                        style: GoogleFonts.inter(
+                            color: AndroidTheme.textSecondary, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _kLabels[job.status]!,
+                    style: GoogleFonts.inter(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            if (job.notes != null && job.notes!.isNotEmpty) ...[
+              const SizedBox(height: 8),
               Text(
-                job.title,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                job.notes!,
+                style: GoogleFonts.inter(
+                    color: AndroidTheme.textSecondary,
+                    fontSize: 12,
+                    height: 1.4),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
-              Text(
-                job.company,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-              if (job.notes != null && job.notes!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  job.notes!,
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _kLabels[job.status]!,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (job.appliedAt != null) ...[
+                  Icon(Icons.calendar_today_outlined,
+                      size: 12, color: AndroidTheme.textTertiary),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatDate(job.appliedAt!),
+                    style: GoogleFonts.inter(
+                        fontSize: 11, color: AndroidTheme.textTertiary),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    color: Colors.grey.shade400,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _confirmDelete(context, ref),
+                  const SizedBox(width: 12),
+                ],
+                if (hasResume) ...[
+                  Icon(Icons.description_outlined,
+                      size: 12, color: AndroidTheme.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Resume attached',
+                    style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: AndroidTheme.primary,
+                        fontWeight: FontWeight.w500),
                   ),
                 ],
-              ),
-            ],
-          ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context, ref),
+                  child: Icon(Icons.delete_outline_rounded,
+                      size: 18, color: AndroidTheme.textTertiary),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  void _showPreview(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _JobPreviewSheet(job: job, onEdit: onEdit),
+    );
+  }
+
+  String _formatDate(int ms) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.day}/${d.month}/${d.year}';
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {
@@ -294,19 +405,232 @@ class _JobCard extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete job?'),
-        content: Text('Remove "${job.title}" at ${job.company}? This cannot be undone.'),
+        content: Text('Remove "${job.title}" at ${job.company}?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(), // dialog only
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(dialogContext).pop(); // dialog only
+              Navigator.of(dialogContext).pop();
               final actions = await ref.read(jobActionsProvider.future);
               await actions.deleteJob(job);
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Job preview sheet ──────────────────────────────────────────────────────────
+class _JobPreviewSheet extends StatelessWidget {
+  final Job job;
+  final void Function(Job) onEdit;
+  const _JobPreviewSheet({required this.job, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _kStatusColors[job.status] ?? AndroidTheme.textTertiary;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: AndroidTheme.card,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AndroidTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                children: [
+                  // Status badge
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_kStatusIcons[job.status],
+                                size: 14, color: color),
+                            const SizedBox(width: 6),
+                            Text(
+                              _kLabels[job.status]!,
+                              style: GoogleFonts.inter(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Title & company
+                  Text(
+                    job.title,
+                    style: GoogleFonts.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AndroidTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    job.company,
+                    style: GoogleFonts.inter(
+                        fontSize: 16, color: AndroidTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Detail rows
+                  if (job.appliedAt != null)
+                    _DetailRow(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'Applied date',
+                      value: _formatDate(job.appliedAt!),
+                    ),
+                  _DetailRow(
+                    icon: Icons.update_rounded,
+                    label: 'Last updated',
+                    value: _formatDate(job.updatedAt),
+                  ),
+                  if (job.url != null && job.url!.isNotEmpty)
+                    _DetailRow(
+                      icon: Icons.link_rounded,
+                      label: 'Job URL',
+                      value: job.url!,
+                      valueColor: AndroidTheme.primary,
+                    ),
+                  if (job.resumePath != null && job.resumePath!.isNotEmpty)
+                    _DetailRow(
+                      icon: Icons.description_outlined,
+                      label: 'Resume',
+                      value: job.resumePath!.split('/').last,
+                      valueColor: AndroidTheme.primary,
+                    ),
+
+                  // Notes
+                  if (job.notes != null && job.notes!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _DetailRow(
+                      icon: Icons.notes_rounded,
+                      label: 'Notes',
+                      value: job.notes!,
+                    ),
+                  ],
+
+                  const SizedBox(height: 8),
+                  Text(
+                    'Created ${_formatDate(job.createdAt)}',
+                    style: GoogleFonts.inter(
+                        fontSize: 11, color: AndroidTheme.textTertiary),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Edit button
+                  FilledButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit Job'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onEdit(job);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(int ms) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.day}/${d.month}/${d.year}';
+  }
+}
+
+// ── Detail row helper ──────────────────────────────────────────────────────────
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _DetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AndroidTheme.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 16, color: AndroidTheme.textSecondary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: AndroidTheme.textTertiary,
+                      fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: valueColor ?? AndroidTheme.textPrimary,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -330,30 +654,61 @@ class _JobFormSheetState extends State<_JobFormSheet> {
   late final TextEditingController _notes;
   late final TextEditingController _url;
   late String _status;
+  String? _resumePath;
+  DateTime? _appliedAt;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     final j = widget.existing;
-    _title   = TextEditingController(text: j?.title ?? '');
-    _company = TextEditingController(text: j?.company ?? '');
-    _notes   = TextEditingController(text: j?.notes ?? '');
-    _url     = TextEditingController(text: j?.url ?? '');
-    _status  = j?.status ?? 'applied';
+    _title      = TextEditingController(text: j?.title ?? '');
+    _company    = TextEditingController(text: j?.company ?? '');
+    _notes      = TextEditingController(text: j?.notes ?? '');
+    _url        = TextEditingController(text: j?.url ?? '');
+    _status     = j?.status ?? 'applied';
+    _resumePath = j?.resumePath;
+    _appliedAt  = j?.appliedAt != null
+        ? DateTime.fromMillisecondsSinceEpoch(j!.appliedAt!)
+        : null;
   }
 
   @override
   void dispose() {
-    _title.dispose(); _company.dispose();
-    _notes.dispose(); _url.dispose();
+    _title.dispose();
+    _company.dispose();
+    _notes.dispose();
+    _url.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickResume() async {
+    const typeGroup = XTypeGroup(
+        label: 'Documents', extensions: ['pdf', 'doc', 'docx']);
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file != null) setState(() => _resumePath = file.path);
+  }
+
+  Future<void> _pickAppliedDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _appliedAt ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme:
+              const ColorScheme.light(primary: AndroidTheme.primary),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _appliedAt = picked);
   }
 
   Future<void> _save() async {
     if (_title.text.trim().isEmpty || _company.text.trim().isEmpty) return;
     setState(() => _saving = true);
-
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing = widget.existing;
     final job = Job(
@@ -363,93 +718,236 @@ class _JobFormSheetState extends State<_JobFormSheet> {
       status:    _status,
       notes:     _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       url:       _url.text.trim().isEmpty ? null : _url.text.trim(),
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
+      resumePath: _resumePath,
+      appliedAt:  _appliedAt?.millisecondsSinceEpoch,
+      createdAt:  existing?.createdAt ?? now,
+      updatedAt:  now,
     );
-
     final actions = await widget.ref.read(jobActionsProvider.future);
     if (existing == null) {
       await actions.addJob(job);
     } else {
       await actions.updateJob(job);
     }
-
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
+    final resumeName = _resumePath?.split('/').last;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        24, 24, 24,
-        MediaQuery.viewInsetsOf(context).bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            isEdit ? 'Edit Job' : 'Add Job',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _title,
-            decoration: const InputDecoration(
-              labelText: 'Job title *',
-              border: OutlineInputBorder(),
+          20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                Text(
+                  isEdit ? 'Edit Job' : 'Add Job',
+                  style: GoogleFonts.inter(
+                      fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                if (isEdit)
+                  Text(
+                    'Updated ${_formatTs(widget.existing!.updatedAt)}',
+                    style: GoogleFonts.inter(
+                        fontSize: 11, color: AndroidTheme.textTertiary),
+                  ),
+              ],
             ),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _company,
-            decoration: const InputDecoration(
-              labelText: 'Company *',
-              border: OutlineInputBorder(),
+            const SizedBox(height: 20),
+
+            TextField(
+              controller: _title,
+              decoration: const InputDecoration(labelText: 'Job title *'),
+              textCapitalization: TextCapitalization.words,
             ),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _status,
-            decoration: const InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _company,
+              decoration: const InputDecoration(labelText: 'Company *'),
+              textCapitalization: TextCapitalization.words,
             ),
-            items: _kStatuses.map((s) => DropdownMenuItem(
-              value: s,
-              child: Text(_kLabels[s]!),
-            )).toList(),
-            onChanged: (v) => setState(() => _status = v ?? _status),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _notes,
-            decoration: const InputDecoration(
-              labelText: 'Notes',
-              border: OutlineInputBorder(),
+            const SizedBox(height: 16),
+
+            // Status chips
+            Text(
+              'Status',
+              style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AndroidTheme.textSecondary),
             ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _url,
-            decoration: const InputDecoration(
-              labelText: 'Job URL',
-              border: OutlineInputBorder(),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _kStatuses.map((s) {
+                  final selected = _status == s;
+                  final color = _kStatusColors[s]!;
+                  return GestureDetector(
+                    onTap: () => setState(() => _status = s),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected ? color : AndroidTheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: selected ? color : AndroidTheme.divider),
+                      ),
+                      child: Text(
+                        _kLabels[s]!,
+                        style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: selected
+                                ? Colors.white
+                                : AndroidTheme.textSecondary),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-            keyboardType: TextInputType.url,
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Job'),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // Applied date picker
+            GestureDetector(
+              onTap: _pickAppliedDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AndroidTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AndroidTheme.divider),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined,
+                        size: 18, color: AndroidTheme.textSecondary),
+                    const SizedBox(width: 10),
+                    Text(
+                      _appliedAt != null
+                          ? 'Applied: ${_appliedAt!.day}/${_appliedAt!.month}/${_appliedAt!.year}'
+                          : 'Set applied date',
+                      style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: _appliedAt != null
+                              ? AndroidTheme.textPrimary
+                              : AndroidTheme.textTertiary),
+                    ),
+                    const Spacer(),
+                    if (_appliedAt != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _appliedAt = null),
+                        child: Icon(Icons.close_rounded,
+                            size: 16, color: AndroidTheme.textTertiary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            TextField(
+              controller: _notes,
+              decoration: const InputDecoration(
+                  labelText: 'Notes', alignLabelWithHint: true),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 12),
+
+            TextField(
+              controller: _url,
+              decoration: const InputDecoration(
+                labelText: 'Job URL',
+                prefixIcon: Icon(Icons.link_rounded, size: 18),
+              ),
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+
+            // Resume picker
+            GestureDetector(
+              onTap: _pickResume,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: resumeName != null
+                      ? AndroidTheme.primaryLight
+                      : AndroidTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: resumeName != null
+                        ? AndroidTheme.primary
+                        : AndroidTheme.divider,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.description_outlined,
+                      size: 18,
+                      color: resumeName != null
+                          ? AndroidTheme.primary
+                          : AndroidTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        resumeName ?? 'Attach resume (PDF/DOC)',
+                        style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: resumeName != null
+                                ? AndroidTheme.primary
+                                : AndroidTheme.textTertiary,
+                            fontWeight: resumeName != null
+                                ? FontWeight.w500
+                                : FontWeight.w400),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (resumeName != null)
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _resumePath = null),
+                        child: Icon(Icons.close_rounded,
+                            size: 16, color: AndroidTheme.primary),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving
+                  ? 'Saving…'
+                  : isEdit
+                      ? 'Save Changes'
+                      : 'Add Job'),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _formatTs(int ms) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.day}/${d.month}/${d.year}';
   }
 }

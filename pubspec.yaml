@@ -9,37 +9,31 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  googleapis: ^13.2.0
-  googleapis_auth: ^1.6.0
-  http: ^1.2.2
-  path: ^1.9.0
-  path_provider: ^2.1.4
-  url_launcher: ^6.3.1
-
-  # Database
   floor: ^1.4.0
-
-  # Navigation
   go_router: ^13.0.0
-
-  # State management
   flutter_riverpod: ^2.5.1
-
-  # Utilities
   uuid: ^4.3.3
   intl: ^0.19.0
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
-  file_selector: ^1.0.3 
+  file_selector: ^1.0.3
   table_calendar: ^3.1.2
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+  googleapis: ^13.2.0
+  googleapis_auth: ^1.6.0
+  google_sign_in: ^6.2.1
+  http: ^1.2.2
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  url_launcher: ^6.3.1
   sqflite: ^2.3.3
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-
-  # Code generation (Floor requires this)
   build_runner: ^2.4.9
   floor_generator: ^1.4.0
 

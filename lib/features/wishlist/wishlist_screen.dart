@@ -3,8 +3,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/android_theme.dart';
+import '../../core/widgets/app_card.dart';
 import '../../data/models/wishlist_item.dart';
 import 'wishlist_provider.dart';
 
@@ -19,34 +21,54 @@ class WishlistScreen extends ConsumerWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(
+      backgroundColor: AndroidTheme.surface,
       appBar: AppBar(
-        title: const Text('Wishlist'),
+        title: Text('Wishlist',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 20)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Item',
-            onPressed: () => _showItemForm(context, ref),
-          ),
+          if (!Platform.isAndroid)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => _showItemForm(context, ref),
+            ),
         ],
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 64), // clears the nav bar
+        child: FloatingActionButton(
+          onPressed: () => _showItemForm(context, ref),
+          backgroundColor: AndroidTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          child: const Icon(Icons.add_rounded, size: 28),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _FilterBar(current: filter),
           Expanded(
             child: items.isEmpty
                 ? Center(
-                    child: Text(
-                      'No items here yet',
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 15,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.favorite_border_rounded,
+                            size: 48,
+                            color: AndroidTheme.textTertiary
+                                .withValues(alpha: 0.4)),
+                        const SizedBox(height: 12),
+                        Text('No items here yet',
+                            style: GoogleFonts.inter(
+                                color: AndroidTheme.textTertiary,
+                                fontSize: 15)),
+                      ],
                     ),
                   )
                 : GridView.builder(
-                    padding: const EdgeInsets.all(16),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: isWide ? 4 : 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
@@ -55,7 +77,8 @@ class WishlistScreen extends ConsumerWidget {
                     itemCount: items.length,
                     itemBuilder: (_, i) => _WishlistCard(
                       item: items[i],
-                      onEdit: (item) => _showItemForm(context, ref, existing: item),
+                      onEdit: (item) =>
+                          _showItemForm(context, ref, existing: item),
                     ),
                   ),
           ),
@@ -64,7 +87,8 @@ class WishlistScreen extends ConsumerWidget {
     );
   }
 
-  void _showItemForm(BuildContext context, WidgetRef ref, {WishlistItem? existing}) {
+  void _showItemForm(BuildContext context, WidgetRef ref,
+      {WishlistItem? existing}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -115,98 +139,93 @@ class _WishlistCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => onEdit(item),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Image area — local file first, URL fallback, placeholder last
-            Expanded(
-              child: _ItemImage(item: item),
-            ),
-            // Info area
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+    return AppCard(
+      onTap: () => _showPreview(context, ref),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _ItemImage(item: item)),
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600, fontSize: 13),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (item.price != null) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    item.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (item.price != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '₹${item.price!.toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: AppTheme.primary,
+                    '₹${item.price!.toStringAsFixed(0)}',
+                    style: GoogleFonts.inter(
+                        color: AndroidTheme.primary,
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                  if (item.category != null) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        item.category!,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  // Bottom row: purchased toggle + delete
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        onTap: () async {
-                          final actions =
-                              await ref.read(wishlistActionsProvider.future);
-                          await actions.togglePurchased(item);
-                        },
-                        child: Icon(
-                          item.isPurchased
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          size: 20,
-                          color: item.isPurchased
-                              ? Colors.green
-                              : Colors.grey.shade400,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _confirmDelete(context, ref),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 18,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
-              ),
+                if (item.category != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AndroidTheme.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: AndroidTheme.divider),
+                    ),
+                    child: Text(
+                      item.category!,
+                      style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: AndroidTheme.textSecondary),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final actions = await ref
+                            .read(wishlistActionsProvider.future);
+                        await actions.togglePurchased(item);
+                      },
+                      child: Icon(
+                        item.isPurchased
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                        size: 20,
+                        color: item.isPurchased
+                            ? Colors.green
+                            : Colors.grey.shade400,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _confirmDelete(context, ref),
+                      child: Icon(Icons.delete_outline,
+                          size: 18, color: Colors.grey.shade400),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showPreview(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _WishlistPreviewSheet(item: item, onEdit: onEdit),
     );
   }
 
@@ -228,8 +247,222 @@ class _WishlistCard extends ConsumerWidget {
                   await ref.read(wishlistActionsProvider.future);
               await actions.deleteItem(item);
             },
-            child:
-                const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete',
+                style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Wishlist preview sheet ─────────────────────────────────────────────────────
+class _WishlistPreviewSheet extends StatelessWidget {
+  final WishlistItem item;
+  final void Function(WishlistItem) onEdit;
+  const _WishlistPreviewSheet({required this.item, required this.onEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: AndroidTheme.card,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AndroidTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                children: [
+                  // Image
+                  if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: item.imageUrl!.startsWith('http')
+                          ? CachedNetworkImage(
+                              imageUrl: item.imageUrl!,
+                              height: 220,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                height: 220,
+                                color: AndroidTheme.surface,
+                                child: const Center(
+                                    child: CircularProgressIndicator()),
+                              ),
+                            )
+                          : Image.file(
+                              File(item.imageUrl!),
+                              height: 220,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                    )
+                  else
+                    Container(
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: AndroidTheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AndroidTheme.divider),
+                      ),
+                      child: Icon(Icons.image_outlined,
+                          size: 48,
+                          color: AndroidTheme.textTertiary
+                              .withValues(alpha: 0.4)),
+                    ),
+                  const SizedBox(height: 20),
+
+                  // Name
+                  Text(
+                    item.name,
+                    style: GoogleFonts.inter(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AndroidTheme.textPrimary,
+                    ),
+                  ),
+
+                  // Price
+                  if (item.price != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '₹${item.price!.toStringAsFixed(0)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 20,
+                        color: AndroidTheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+
+                  // Details
+                  if (item.category != null)
+                    _WishlistDetailRow(
+                        label: 'Category', value: item.category!),
+
+                  if (item.productUrl != null &&
+                      item.productUrl!.isNotEmpty)
+                    _WishlistDetailRow(
+                      label: 'Product URL',
+                      value: item.productUrl!,
+                      valueColor: AndroidTheme.primary,
+                    ),
+
+                  // Purchased status
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: item.isPurchased
+                          ? Colors.green.shade50
+                          : AndroidTheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: item.isPurchased
+                            ? Colors.green.shade200
+                            : AndroidTheme.divider,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          item.isPurchased
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          size: 18,
+                          color: item.isPurchased
+                              ? Colors.green
+                              : AndroidTheme.textTertiary,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          item.isPurchased
+                              ? 'Already purchased'
+                              : 'Not yet purchased',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: item.isPurchased
+                                ? Colors.green.shade700
+                                : AndroidTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Edit button
+                  FilledButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Edit Item'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onEdit(item);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Wishlist detail row ────────────────────────────────────────────────────────
+class _WishlistDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _WishlistDetailRow({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+                fontSize: 11,
+                color: AndroidTheme.textTertiary,
+                fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+                fontSize: 14,
+                color: valueColor ?? AndroidTheme.textPrimary,
+                fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -244,39 +477,31 @@ class _ItemImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Priority: local file → network URL → placeholder
     final localPath = item.imageUrl;
-
-    if (localPath != null && localPath.isNotEmpty && !localPath.startsWith('http')) {
-      final file = File(localPath);
-      return Image.file(
-        file,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholder(),
-      );
+    if (localPath != null &&
+        localPath.isNotEmpty &&
+        !localPath.startsWith('http')) {
+      return Image.file(File(localPath),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder());
     }
-
     if (localPath != null && localPath.startsWith('http')) {
       return CachedNetworkImage(
         imageUrl: localPath,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
+        placeholder: (_, __) =>
+            const Center(child: CircularProgressIndicator(strokeWidth: 2)),
         errorWidget: (_, __, ___) => _placeholder(),
       );
     }
-
     return _placeholder();
   }
 
-  Widget _placeholder() {
-    return Container(
-      color: Colors.grey.shade100,
-      child: Icon(Icons.image_outlined,
-          size: 40, color: Colors.grey.shade300),
-    );
-  }
+  Widget _placeholder() => Container(
+        color: AndroidTheme.surface,
+        child: Icon(Icons.image_outlined,
+            size: 40, color: AndroidTheme.textTertiary.withValues(alpha: 0.4)),
+      );
 }
 
 // ── Add / Edit form ────────────────────────────────────────────────────────────
@@ -309,8 +534,7 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     _category   = TextEditingController(text: item?.category ?? '');
     _productUrl = TextEditingController(text: item?.productUrl ?? '');
     _imageUrl   = TextEditingController(
-        text: (item?.imageUrl != null &&
-                item!.imageUrl!.startsWith('http'))
+        text: (item?.imageUrl != null && item!.imageUrl!.startsWith('http'))
             ? item.imageUrl!
             : '');
     _localImagePath =
@@ -322,20 +546,16 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
 
   @override
   void dispose() {
-    _name.dispose(); _price.dispose();
-    _category.dispose(); _productUrl.dispose();
-    _imageUrl.dispose();
+    _name.dispose(); _price.dispose(); _category.dispose();
+    _productUrl.dispose(); _imageUrl.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
     const typeGroup = XTypeGroup(
-      label: 'Images',
-      extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
-    );
-
+        label: 'Images',
+        extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif']);
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
-
     if (file != null) {
       setState(() {
         _localImagePath = file.path;
@@ -348,7 +568,6 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     if (_name.text.trim().isEmpty) return;
     setState(() => _saving = true);
 
-    // Resolve image source: local file wins over URL
     String? imageValue = _localImagePath?.isNotEmpty == true
         ? _localImagePath
         : _imageUrl.text.trim().isNotEmpty
@@ -359,14 +578,14 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     final existing = widget.existing;
 
     final item = WishlistItem(
-      id:          existing?.id ?? const Uuid().v4(),
-      name:        _name.text.trim(),
-      price:       double.tryParse(_price.text.trim()),
-      imageUrl:    imageValue,
-      category:    _category.text.trim().isEmpty ? null : _category.text.trim(),
-      productUrl:  _productUrl.text.trim().isEmpty ? null : _productUrl.text.trim(),
+      id:         existing?.id ?? const Uuid().v4(),
+      name:       _name.text.trim(),
+      price:      double.tryParse(_price.text.trim()),
+      imageUrl:   imageValue,
+      category:   _category.text.trim().isEmpty ? null : _category.text.trim(),
+      productUrl: _productUrl.text.trim().isEmpty ? null : _productUrl.text.trim(),
       isPurchased: _isPurchased,
-      createdAt:   existing?.createdAt ?? now,
+      createdAt:  existing?.createdAt ?? now,
     );
 
     final actions = await widget.ref.read(wishlistActionsProvider.future);
@@ -375,7 +594,6 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     } else {
       await actions.updateItem(item);
     }
-
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -393,45 +611,87 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
           children: [
             Text(
               isEdit ? 'Edit Item' : 'Add Item',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: GoogleFonts.inter(
+                  fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
 
-            // Image preview + picker
-            _ImagePickerSection(
-              localPath: _localImagePath,
-              urlText: _imageUrl.text,
-              onPickImage: _pickImage,
-              onClearLocal: () => setState(() => _localImagePath = null),
+            // Image picker
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 140,
+                decoration: BoxDecoration(
+                  color: AndroidTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AndroidTheme.divider),
+                ),
+                child: _localImagePath != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.file(
+                              File(_localImagePath!),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setState(() => _localImagePath = null),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close,
+                                    size: 14, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined,
+                              size: 32,
+                              color: AndroidTheme.textTertiary
+                                  .withValues(alpha: 0.6)),
+                          const SizedBox(height: 8),
+                          Text('Tap to pick image from gallery',
+                              style: GoogleFonts.inter(
+                                  color: AndroidTheme.textTertiary,
+                                  fontSize: 13)),
+                        ],
+                      ),
+              ),
             ),
             const SizedBox(height: 12),
 
             TextField(
               controller: _name,
-              decoration: const InputDecoration(
-                labelText: 'Item name *',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Item name *'),
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _price,
               decoration: const InputDecoration(
-                labelText: 'Price (₹)',
-                border: OutlineInputBorder(),
-                prefixText: '₹ ',
-              ),
+                  labelText: 'Price (₹)', prefixText: '₹ '),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _category,
               decoration: const InputDecoration(
-                labelText: 'Category',
-                border: OutlineInputBorder(),
-                hintText: 'e.g. Electronics, Clothing',
-              ),
+                  labelText: 'Category',
+                  hintText: 'e.g. Electronics, Clothing'),
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
@@ -439,7 +699,6 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
               controller: _imageUrl,
               decoration: const InputDecoration(
                 labelText: 'Image URL (optional)',
-                border: OutlineInputBorder(),
                 hintText: 'https://...',
               ),
               keyboardType: TextInputType.url,
@@ -450,17 +709,27 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
               controller: _productUrl,
               decoration: const InputDecoration(
                 labelText: 'Product URL (optional)',
-                border: OutlineInputBorder(),
                 hintText: 'https://...',
               ),
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Already purchased'),
-              value: _isPurchased,
-              onChanged: (v) => setState(() => _isPurchased = v),
+            Container(
+              decoration: BoxDecoration(
+                color: AndroidTheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AndroidTheme.divider),
+              ),
+              child: SwitchListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16),
+                title: Text('Already purchased',
+                    style:
+                        GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                value: _isPurchased,
+                activeColor: AndroidTheme.primary,
+                onChanged: (v) => setState(() => _isPurchased = v),
+              ),
             ),
             const SizedBox(height: 20),
             FilledButton(
@@ -473,80 +742,6 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Image picker section widget ────────────────────────────────────────────────
-class _ImagePickerSection extends StatelessWidget {
-  final String? localPath;
-  final String urlText;
-  final VoidCallback onPickImage;
-  final VoidCallback onClearLocal;
-
-  const _ImagePickerSection({
-    required this.localPath,
-    required this.urlText,
-    required this.onPickImage,
-    required this.onClearLocal,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hasLocal = localPath != null && localPath!.isNotEmpty;
-
-    return GestureDetector(
-      onTap: onPickImage,
-      child: Container(
-        height: 140,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: hasLocal
-            ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      File(localPath!),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: onClearLocal,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close,
-                            size: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_photo_alternate_outlined,
-                      size: 32, color: Colors.grey.shade400),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Tap to pick image from gallery',
-                    style: TextStyle(
-                        color: Colors.grey.shade500, fontSize: 12),
-                  ),
-                ],
-              ),
       ),
     );
   }
