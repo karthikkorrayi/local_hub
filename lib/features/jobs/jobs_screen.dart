@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/android_theme.dart';
@@ -286,102 +287,35 @@ class _JobCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final color = _kStatusColors[job.status] ?? AndroidTheme.textTertiary;
-    final hasResume = job.resumePath != null && job.resumePath!.isNotEmpty;
-
     return AppCard(
       onTap: () => context.push('/jobs/${job.id}', extra: job),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job.title,
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: AndroidTheme.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        job.company,
-                        style: GoogleFonts.inter(
-                            color: AndroidTheme.textSecondary, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _kLabels[job.status]!,
-                    style: GoogleFonts.inter(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            if (job.notes != null && job.notes!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                job.notes!,
-                style: GoogleFonts.inter(
-                    color: AndroidTheme.textSecondary,
-                    fontSize: 12,
-                    height: 1.4),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(job.title,
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AndroidTheme.textPrimary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text(job.company,
+                      style: GoogleFonts.inter(color: AndroidTheme.textSecondary, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ],
               ),
-            ],
-            const SizedBox(height: 10),
-            Row(
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (job.appliedAt != null) ...[
-                  Icon(Icons.calendar_today_outlined,
-                      size: 12, color: AndroidTheme.textTertiary),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatDate(job.appliedAt!),
-                    style: GoogleFonts.inter(
-                        fontSize: 11, color: AndroidTheme.textTertiary),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                if (hasResume) ...[
-                  Icon(Icons.description_outlined,
-                      size: 12, color: AndroidTheme.primary),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Resume attached',
-                    style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: AndroidTheme.primary,
-                        fontWeight: FontWeight.w500),
-                  ),
-                ],
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _confirmDelete(context, ref),
-                  child: Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AndroidTheme.textTertiary),
-                ),
+                Text('Last modified', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(_formatDate(job.updatedAt), style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textSecondary, fontWeight: FontWeight.w700)),
               ],
             ),
           ],
@@ -975,23 +909,35 @@ class JobDetailsScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
                 AppCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(job.title,
-                          style: GoogleFonts.inter(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: AndroidTheme.textPrimary)),
-                      const SizedBox(height: 6),
-                      Text('${job.company} (${_monthDate(job.appliedAt)})',
-                          style: GoogleFonts.inter(
-                              fontSize: 16,
-                              color: AndroidTheme.textSecondary,
-                              fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 18),
-                      _StatusBadge(status: job.status),
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(job.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(fontSize: 23, fontWeight: FontWeight.w800, color: AndroidTheme.textPrimary)),
+                            const SizedBox(height: 6),
+                            Text(job.company, style: GoogleFonts.inter(fontSize: 16, color: AndroidTheme.textSecondary, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('Applied', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
+                            Text(_monthDate(job.appliedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 8),
+                            Text('Modified', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
+                            Text(_monthDate(job.updatedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1001,59 +947,34 @@ class JobDetailsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _StatusBadge(status: job.status),
+                      const SizedBox(height: 16),
+                      _ActionRow(icon: Icons.notes_rounded, label: 'Detail Notes', value: job.notes?.isNotEmpty == true ? job.notes! : 'No detail notes yet'),
                       if (job.url != null && job.url!.isNotEmpty)
-                        _ActionRow(
-                          icon: Icons.open_in_new_rounded,
-                          label: 'Job URL',
-                          value: job.url!,
-                          onTap: () => _launchExternal(job.url!),
-                        ),
-                      _ActionRow(
-                        icon: Icons.notes_rounded,
-                        label: 'Notes',
-                        value: job.notes?.isNotEmpty == true
-                            ? job.notes!
-                            : 'No notes yet',
-                      ),
+                        _ActionRow(icon: Icons.open_in_new_rounded, label: 'Job URL', value: job.url!, onTap: () => _launchExternal(job.url!)),
                       if (job.resumePath != null && job.resumePath!.isNotEmpty)
-                        _ActionRow(
-                          icon: Icons.description_outlined,
-                          label: 'Uploaded Resume',
-                          value: job.resumePath!.split('/').last,
-                          onTap: () => _showResumePreview(context, job.resumePath!),
-                        ),
+                        _ActionRow(icon: Icons.description_outlined, label: 'Uploaded Resume', value: job.resumePath!.split('/').last, onTap: () => _showResumePreview(context, job.resumePath!)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.note_add_outlined, size: 18),
-                        label: const Text('Update Notes'),
-                        onPressed: () => _showNoteDialog(context, ref, job),
-                      ),
-                    ),
+                    Expanded(child: FilledButton.icon(icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Comment'), onPressed: () => _showNoteDialog(context, ref, job))),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.swap_horiz_rounded, size: 18),
-                        label: const Text('Update Status'),
-                        onPressed: () => _showStatusDialog(context, ref, job),
-                      ),
-                    ),
+                    Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.swap_horiz_rounded, size: 18), label: const Text('Update Status'), onPressed: () => _showStatusDialog(context, ref, job))),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _TimelineCard(title: 'Notes Timeline', entries: job.noteTimeline),
-                const SizedBox(height: 12),
-                _TimelineCard(
-                  title: 'Status History',
-                  entries: job.statusTimeline
-                      .map((e) => JobTimelineEntry(
-                          date: e.date, text: _kLabels[e.text] ?? e.text))
-                      .toList(),
+                _TimelineCard(title: 'Comment History', entries: job.noteTimeline),
+                const SizedBox(height: 24),
+                Center(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Delete'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    onPressed: () => _confirmDelete(context, ref, job),
+                  ),
                 ),
               ],
             ),
@@ -1061,7 +982,7 @@ class JobDetailsScreen extends ConsumerWidget {
   }
 
   static String _monthDate(int? ms) {
-    if (ms == null) return 'No applied date';
+    if (ms == null) return 'Not set';
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
     const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return '${months[d.month]} ${d.day}, ${d.year}';
@@ -1073,55 +994,25 @@ class JobDetailsScreen extends ConsumerWidget {
   }
 
   void _showResumePreview(BuildContext context, String path) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(path.split('/').last),
-        content: SizedBox(
-          width: 420,
-          child: path.toLowerCase().endsWith('.pdf')
-              ? const Text('PDF preview is available in this in-app modal. Use Open externally only if you need full document controls.')
-              : Image.file(File(path), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Preview unavailable for this file type.')),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
-      ),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ResumeViewerPage(path: path)));
   }
 
   void _showNoteDialog(BuildContext context, WidgetRef ref, Job job) {
     final note = TextEditingController();
-    DateTime updateDate = DateTime.now();
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Update Notes'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: note, decoration: const InputDecoration(labelText: 'New Note'), maxLines: 3),
-              const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_today_outlined),
-                title: Text(_monthDate(updateDate.millisecondsSinceEpoch)),
-                onTap: () async {
-                  final picked = await showDatePicker(context: context, initialDate: updateDate, firstDate: DateTime(2020), lastDate: DateTime(2035));
-                  if (picked != null) setState(() => updateDate = picked);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-            FilledButton(onPressed: () async {
-              if (note.text.trim().isEmpty) return;
-              final actions = await ref.read(jobActionsProvider.future);
-              await actions.appendNote(job, JobTimelineEntry(date: updateDate.millisecondsSinceEpoch, text: note.text.trim()));
-              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-            }, child: const Text('Save')),
-          ],
-        ),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Add Comment'),
+        content: TextField(controller: note, decoration: const InputDecoration(labelText: 'Daily comment'), maxLines: 4, autofocus: true),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+          FilledButton(onPressed: () async {
+            if (note.text.trim().isEmpty) return;
+            final actions = await ref.read(jobActionsProvider.future);
+            await actions.appendNote(job, JobTimelineEntry(date: DateTime.now().millisecondsSinceEpoch, text: note.text.trim()));
+            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+          }, child: const Text('Save')),
+        ],
       ),
     );
   }
@@ -1149,6 +1040,40 @@ class JobDetailsScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, Job job) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete job?'),
+        content: Text('Remove "${job.title}" at ${job.company}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+          TextButton(onPressed: () async {
+            Navigator.of(dialogContext).pop();
+            final actions = await ref.read(jobActionsProvider.future);
+            await actions.deleteJob(job);
+            if (context.mounted) context.pop();
+          }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumeViewerPage extends StatelessWidget {
+  final String path;
+  const _ResumeViewerPage({required this.path});
+  @override
+  Widget build(BuildContext context) {
+    final isPdf = path.toLowerCase().endsWith('.pdf');
+    return Scaffold(
+      appBar: AppBar(title: Text(path.split('/').last)),
+      body: isPdf
+          ? SfPdfViewer.file(File(path))
+          : Center(child: Image.file(File(path), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Preview unavailable for this file type.'))),
     );
   }
 }

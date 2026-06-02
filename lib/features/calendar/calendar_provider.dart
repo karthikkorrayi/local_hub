@@ -10,6 +10,7 @@ import '../../data/models/job.dart';
 import '../jobs/job_provider.dart';
 
 final selectedDayProvider = StateProvider<DateTime>((ref) => DateTime.now());
+final focusedMonthProvider = StateProvider<DateTime>((ref) => DateTime(DateTime.now().year, DateTime.now().month));
 final calendarViewProvider = StateProvider<String>((ref) => 'month');
 
 String dateKey(DateTime d) =>
@@ -20,6 +21,8 @@ String weekStartKey(DateTime d) {
   return dateKey(monday);
 }
 
+DateTime dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
 final dayEventsProvider = FutureProvider<List<CalendarEvent>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   final day = ref.watch(selectedDayProvider);
@@ -28,7 +31,7 @@ final dayEventsProvider = FutureProvider<List<CalendarEvent>>((ref) async {
 
 final monthEventsProvider = FutureProvider<Map<String, List<CalendarEvent>>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
-  final day = ref.watch(selectedDayProvider);
+  final day = ref.watch(focusedMonthProvider);
   final from = DateTime(day.year, day.month, 1);
   final to = DateTime(day.year, day.month + 1, 0);
   final events = await db.calendarDao.getEventsInRange(dateKey(from), dateKey(to));
@@ -37,13 +40,13 @@ final monthEventsProvider = FutureProvider<Map<String, List<CalendarEvent>>>((re
   return map;
 });
 
-final monthMoodProvider = FutureProvider<Map<String, String>>((ref) async {
+final monthMoodProvider = FutureProvider<Map<String, DayEntry>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
-  final day = ref.watch(selectedDayProvider);
+  final day = ref.watch(focusedMonthProvider);
   final from = DateTime(day.year, day.month, 1);
   final to = DateTime(day.year, day.month + 1, 0);
   final entries = await db.dayEntryDao.getEntriesInRange(dateKey(from), dateKey(to));
-  return { for (final e in entries) if (e.mood != null) e.date: e.mood! };
+  return { for (final e in entries) e.date: e };
 });
 
 final dayEntryProvider = FutureProvider<DayEntry?>((ref) async {
@@ -58,6 +61,12 @@ final weekEventsProvider = FutureProvider<List<CalendarEvent>>((ref) async {
   final start = day.subtract(Duration(days: day.weekday - 1));
   final end = start.add(const Duration(days: 6));
   return db.calendarDao.getEventsInRange(dateKey(start), dateKey(end));
+});
+
+final monthEventListProvider = FutureProvider<List<CalendarEvent>>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  final day = ref.watch(focusedMonthProvider);
+  return db.calendarDao.getEventsInRange(dateKey(DateTime(day.year, day.month, 1)), dateKey(DateTime(day.year, day.month + 1, 0)));
 });
 
 final weekTodosProvider = FutureProvider<List<WeekTodo>>((ref) async {
@@ -78,20 +87,9 @@ class CalendarActions {
 
   CalendarActions(this._calDao, this._entryDao, this._todoDao, this._ref);
 
-  Future<void> addEvent(CalendarEvent event) async {
-    await _calDao.insertEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
-  }
-
-  Future<void> updateEvent(CalendarEvent event) async {
-    await _calDao.updateEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
-  }
-
-  Future<void> deleteEvent(CalendarEvent event) async {
-    await _calDao.deleteEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
-  }
+  Future<void> addEvent(CalendarEvent event) async { await _calDao.insertEvent(event); _refresh(); }
+  Future<void> updateEvent(CalendarEvent event) async { await _calDao.updateEvent(event); _refresh(); }
+  Future<void> deleteEvent(CalendarEvent event) async { await _calDao.deleteEvent(event); _refresh(); }
 
   Future<void> toggleEventDone(CalendarEvent event) async {
     final updated = CalendarEvent(
@@ -111,18 +109,15 @@ class CalendarActions {
     _ref.invalidate(dayEntryProvider); _ref.invalidate(monthMoodProvider);
   }
 
-  Future<void> addTodo(WeekTodo todo) async {
-    await _todoDao.insertTodo(todo); _ref.invalidate(weekTodosProvider);
-  }
-
+  Future<void> addTodo(WeekTodo todo) async { await _todoDao.insertTodo(todo); _ref.invalidate(weekTodosProvider); }
   Future<void> toggleTodo(WeekTodo todo) async {
-    final updated = WeekTodo(id: todo.id, weekStart: todo.weekStart,
-        title: todo.title, isDone: !todo.isDone, createdAt: todo.createdAt);
+    final updated = WeekTodo(id: todo.id, weekStart: todo.weekStart, title: todo.title, isDone: !todo.isDone, createdAt: todo.createdAt);
     await _todoDao.updateTodo(updated); _ref.invalidate(weekTodosProvider);
   }
+  Future<void> deleteTodo(WeekTodo todo) async { await _todoDao.deleteTodo(todo); _ref.invalidate(weekTodosProvider); }
 
-  Future<void> deleteTodo(WeekTodo todo) async {
-    await _todoDao.deleteTodo(todo); _ref.invalidate(weekTodosProvider);
+  void _refresh() {
+    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider); _ref.invalidate(monthEventListProvider);
   }
 }
 

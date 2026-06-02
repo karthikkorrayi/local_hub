@@ -3,9 +3,9 @@ import '../../data/daos/wishlist_dao.dart';
 import '../../data/database/database_provider.dart';
 import '../../data/models/wishlist_item.dart';
 
-enum WishlistFilter { all, unpurchased, purchased }
+enum WishlistFilter { ordered, target, gifts }
 
-final wishlistFilterProvider = StateProvider<WishlistFilter>((_) => WishlistFilter.all);
+final wishlistFilterProvider = StateProvider<WishlistFilter>((_) => WishlistFilter.target);
 
 final wishlistListProvider = FutureProvider<List<WishlistItem>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
@@ -23,9 +23,13 @@ final filteredWishlistProvider = Provider<List<WishlistItem>>((ref) {
   return itemsAsync.when(
     data: (items) {
       switch (filter) {
-        case WishlistFilter.purchased: return items.where((i) => i.isPurchased).toList();
-        case WishlistFilter.unpurchased: return items.where((i) => !i.isPurchased).toList();
-        case WishlistFilter.all: return items;
+        case WishlistFilter.ordered:
+          return items.where((i) => i.isPurchased).toList();
+        case WishlistFilter.gifts:
+          return items.where((i) => (i.category ?? '').toLowerCase().contains('gift')).toList();
+        case WishlistFilter.target:
+          return items.where((i) => !i.isPurchased).toList()
+            ..sort((a, b) => (a.targetPurchaseAt ?? 1 << 62).compareTo(b.targetPurchaseAt ?? 1 << 62));
       }
     },
     loading: () => [], error: (_, __) => [],
@@ -37,20 +41,21 @@ class WishlistActions {
   final Ref _ref;
   WishlistActions(this._dao, this._ref);
 
-  Future<void> addItem(WishlistItem item) async { await _dao.insertItem(item); _ref.invalidate(wishlistListProvider); _ref.invalidate(wishlistItemByIdProvider(item.id)); }
-  Future<void> updateItem(WishlistItem item) async { await _dao.updateItem(item); _ref.invalidate(wishlistListProvider); _ref.invalidate(wishlistItemByIdProvider(item.id)); }
-  Future<void> deleteItem(WishlistItem item) async { await _dao.deleteItem(item); _ref.invalidate(wishlistListProvider); _ref.invalidate(wishlistItemByIdProvider(item.id)); }
+  Future<void> addItem(WishlistItem item) async { await _dao.insertItem(item); _refresh(item.id); }
+  Future<void> updateItem(WishlistItem item) async { await _dao.updateItem(item); _refresh(item.id); }
+  Future<void> deleteItem(WishlistItem item) async { await _dao.deleteItem(item); _refresh(item.id); }
   Future<void> togglePurchased(WishlistItem item) async {
-    final updated = WishlistItem(
-      id: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl,
-      category: item.category, productUrl: item.productUrl,
-      targetPurchaseAt: item.targetPurchaseAt, isPurchased: !item.isPurchased,
+    final updated = item.copyWith(
+      isPurchased: !item.isPurchased,
       purchasedAt: item.isPurchased ? null : DateTime.now().millisecondsSinceEpoch,
-      createdAt: item.createdAt,
     );
     await _dao.updateItem(updated);
+    _refresh(item.id);
+  }
+
+  void _refresh(String id) {
     _ref.invalidate(wishlistListProvider);
-    _ref.invalidate(wishlistItemByIdProvider(item.id));
+    _ref.invalidate(wishlistItemByIdProvider(id));
   }
 }
 

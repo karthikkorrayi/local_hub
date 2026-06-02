@@ -92,7 +92,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 5,
+      version: 6,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -108,15 +108,15 @@ class _$AppDatabase extends AppDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Job` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `company` TEXT NOT NULL, `status` TEXT NOT NULL, `notes` TEXT, `url` TEXT, `resumePath` TEXT, `appliedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `Job` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `company` TEXT NOT NULL, `status` TEXT NOT NULL, `notes` TEXT, `url` TEXT, `resumePath` TEXT, `appliedAt` INTEGER, `noteHistory` TEXT, `statusHistory` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `isPurchased` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `targetPurchaseAt` INTEGER, `isPurchased` INTEGER NOT NULL, `purchasedAt` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `itemType` TEXT, `contactInfo` TEXT, `attachmentPath` TEXT, `isDone` INTEGER NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL, `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL, `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT, `filePath` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `AssetFolder` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `AssetFolder` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `icon` TEXT NOT NULL, `description` TEXT, `parentId` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `DayEntry` (`id` TEXT NOT NULL, `date` TEXT NOT NULL, `mood` TEXT, `diary` TEXT, PRIMARY KEY (`id`))');
         await database.execute(
@@ -182,6 +182,8 @@ class _$JobDao extends JobDao {
                   'url': item.url,
                   'resumePath': item.resumePath,
                   'appliedAt': item.appliedAt,
+                  'noteHistory': item.noteHistory,
+                  'statusHistory': item.statusHistory,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -198,6 +200,8 @@ class _$JobDao extends JobDao {
                   'url': item.url,
                   'resumePath': item.resumePath,
                   'appliedAt': item.appliedAt,
+                  'noteHistory': item.noteHistory,
+                  'statusHistory': item.statusHistory,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -214,6 +218,8 @@ class _$JobDao extends JobDao {
                   'url': item.url,
                   'resumePath': item.resumePath,
                   'appliedAt': item.appliedAt,
+                  'noteHistory': item.noteHistory,
+                  'statusHistory': item.statusHistory,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 });
@@ -242,6 +248,8 @@ class _$JobDao extends JobDao {
             url: row['url'] as String?,
             resumePath: row['resumePath'] as String?,
             appliedAt: row['appliedAt'] as int?,
+            noteHistory: row['noteHistory'] as String?,
+            statusHistory: row['statusHistory'] as String?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int));
   }
@@ -259,6 +267,8 @@ class _$JobDao extends JobDao {
             url: row['url'] as String?,
             resumePath: row['resumePath'] as String?,
             appliedAt: row['appliedAt'] as int?,
+            noteHistory: row['noteHistory'] as String?,
+            statusHistory: row['statusHistory'] as String?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int),
         arguments: [status]);
@@ -276,6 +286,8 @@ class _$JobDao extends JobDao {
             url: row['url'] as String?,
             resumePath: row['resumePath'] as String?,
             appliedAt: row['appliedAt'] as int?,
+            noteHistory: row['noteHistory'] as String?,
+            statusHistory: row['statusHistory'] as String?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int),
         arguments: [id]);
@@ -312,7 +324,9 @@ class _$WishlistDao extends WishlistDao {
                   'imageUrl': item.imageUrl,
                   'category': item.category,
                   'productUrl': item.productUrl,
+                  'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
+                  'purchasedAt': item.purchasedAt,
                   'createdAt': item.createdAt
                 }),
         _wishlistItemUpdateAdapter = UpdateAdapter(
@@ -326,7 +340,9 @@ class _$WishlistDao extends WishlistDao {
                   'imageUrl': item.imageUrl,
                   'category': item.category,
                   'productUrl': item.productUrl,
+                  'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
+                  'purchasedAt': item.purchasedAt,
                   'createdAt': item.createdAt
                 }),
         _wishlistItemDeletionAdapter = DeletionAdapter(
@@ -340,7 +356,9 @@ class _$WishlistDao extends WishlistDao {
                   'imageUrl': item.imageUrl,
                   'category': item.category,
                   'productUrl': item.productUrl,
+                  'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
+                  'purchasedAt': item.purchasedAt,
                   'createdAt': item.createdAt
                 });
 
@@ -367,7 +385,9 @@ class _$WishlistDao extends WishlistDao {
             imageUrl: row['imageUrl'] as String?,
             category: row['category'] as String?,
             productUrl: row['productUrl'] as String?,
+            targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
+            purchasedAt: row['purchasedAt'] as int?,
             createdAt: row['createdAt'] as int));
   }
 
@@ -382,7 +402,9 @@ class _$WishlistDao extends WishlistDao {
             imageUrl: row['imageUrl'] as String?,
             category: row['category'] as String?,
             productUrl: row['productUrl'] as String?,
+            targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
+            purchasedAt: row['purchasedAt'] as int?,
             createdAt: row['createdAt'] as int),
         arguments: [purchased ? 1 : 0]);
   }
@@ -397,7 +419,9 @@ class _$WishlistDao extends WishlistDao {
             imageUrl: row['imageUrl'] as String?,
             category: row['category'] as String?,
             productUrl: row['productUrl'] as String?,
+            targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
+            purchasedAt: row['purchasedAt'] as int?,
             createdAt: row['createdAt'] as int),
         arguments: [id]);
   }
@@ -434,6 +458,10 @@ class _$CalendarDao extends CalendarDao {
                   'startTime': item.startTime,
                   'endTime': item.endTime,
                   'category': item.category,
+                  'itemType': item.itemType,
+                  'contactInfo': item.contactInfo,
+                  'attachmentPath': item.attachmentPath,
+                  'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
                   'createdAt': item.createdAt
@@ -450,6 +478,10 @@ class _$CalendarDao extends CalendarDao {
                   'startTime': item.startTime,
                   'endTime': item.endTime,
                   'category': item.category,
+                  'itemType': item.itemType,
+                  'contactInfo': item.contactInfo,
+                  'attachmentPath': item.attachmentPath,
+                  'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
                   'createdAt': item.createdAt
@@ -466,6 +498,10 @@ class _$CalendarDao extends CalendarDao {
                   'startTime': item.startTime,
                   'endTime': item.endTime,
                   'category': item.category,
+                  'itemType': item.itemType,
+                  'contactInfo': item.contactInfo,
+                  'attachmentPath': item.attachmentPath,
+                  'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
                   'createdAt': item.createdAt
@@ -495,6 +531,10 @@ class _$CalendarDao extends CalendarDao {
             startTime: row['startTime'] as String?,
             endTime: row['endTime'] as String?,
             category: row['category'] as String,
+            itemType: row['itemType'] as String?,
+            contactInfo: row['contactInfo'] as String?,
+            attachmentPath: row['attachmentPath'] as String?,
+            isDone: (row['isDone'] as int) != 0,
             linkedJobId: row['linkedJobId'] as String?,
             linkedJobTitle: row['linkedJobTitle'] as String?,
             createdAt: row['createdAt'] as int),
@@ -508,7 +548,7 @@ class _$CalendarDao extends CalendarDao {
   ) async {
     return _queryAdapter.queryList(
         'SELECT * FROM CalendarEvent WHERE date >= ?1 AND date <= ?2 ORDER BY date ASC, startTime ASC',
-        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, date: row['date'] as String, startTime: row['startTime'] as String?, endTime: row['endTime'] as String?, category: row['category'] as String, linkedJobId: row['linkedJobId'] as String?, linkedJobTitle: row['linkedJobTitle'] as String?, createdAt: row['createdAt'] as int),
+        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, date: row['date'] as String, startTime: row['startTime'] as String?, endTime: row['endTime'] as String?, category: row['category'] as String, itemType: row['itemType'] as String?, contactInfo: row['contactInfo'] as String?, attachmentPath: row['attachmentPath'] as String?, isDone: (row['isDone'] as int) != 0, linkedJobId: row['linkedJobId'] as String?, linkedJobTitle: row['linkedJobTitle'] as String?, createdAt: row['createdAt'] as int),
         arguments: [from, to]);
   }
 
@@ -524,6 +564,10 @@ class _$CalendarDao extends CalendarDao {
             startTime: row['startTime'] as String?,
             endTime: row['endTime'] as String?,
             category: row['category'] as String,
+            itemType: row['itemType'] as String?,
+            contactInfo: row['contactInfo'] as String?,
+            attachmentPath: row['attachmentPath'] as String?,
+            isDone: (row['isDone'] as int) != 0,
             linkedJobId: row['linkedJobId'] as String?,
             linkedJobTitle: row['linkedJobTitle'] as String?,
             createdAt: row['createdAt'] as int),
@@ -563,6 +607,7 @@ class _$AssetDao extends AssetDao {
                   'notes': item.notes,
                   'imagePath': item.imagePath,
                   'tags': item.tags,
+                  'filePath': item.filePath,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -578,6 +623,7 @@ class _$AssetDao extends AssetDao {
                   'notes': item.notes,
                   'imagePath': item.imagePath,
                   'tags': item.tags,
+                  'filePath': item.filePath,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -593,6 +639,7 @@ class _$AssetDao extends AssetDao {
                   'notes': item.notes,
                   'imagePath': item.imagePath,
                   'tags': item.tags,
+                  'filePath': item.filePath,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 });
@@ -621,6 +668,7 @@ class _$AssetDao extends AssetDao {
             notes: row['notes'] as String?,
             imagePath: row['imagePath'] as String?,
             tags: row['tags'] as String?,
+            filePath: row['filePath'] as String?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int),
         arguments: [folderId]);
@@ -630,7 +678,7 @@ class _$AssetDao extends AssetDao {
   Future<List<Asset>> searchAssets(String query) async {
     return _queryAdapter.queryList(
         'SELECT * FROM Asset WHERE title LIKE ?1 OR notes LIKE ?1 OR tags LIKE ?1 ORDER BY updatedAt DESC',
-        mapper: (Map<String, Object?> row) => Asset(id: row['id'] as String, folderId: row['folderId'] as String, title: row['title'] as String, type: row['type'] as String, notes: row['notes'] as String?, imagePath: row['imagePath'] as String?, tags: row['tags'] as String?, createdAt: row['createdAt'] as int, updatedAt: row['updatedAt'] as int),
+        mapper: (Map<String, Object?> row) => Asset(id: row['id'] as String, folderId: row['folderId'] as String, title: row['title'] as String, type: row['type'] as String, notes: row['notes'] as String?, imagePath: row['imagePath'] as String?, tags: row['tags'] as String?, filePath: row['filePath'] as String?, createdAt: row['createdAt'] as int, updatedAt: row['updatedAt'] as int),
         arguments: [query]);
   }
 
@@ -669,6 +717,8 @@ class _$AssetFolderDao extends AssetFolderDao {
                   'id': item.id,
                   'name': item.name,
                   'icon': item.icon,
+                  'description': item.description,
+                  'parentId': item.parentId,
                   'createdAt': item.createdAt
                 }),
         _assetFolderUpdateAdapter = UpdateAdapter(
@@ -679,6 +729,8 @@ class _$AssetFolderDao extends AssetFolderDao {
                   'id': item.id,
                   'name': item.name,
                   'icon': item.icon,
+                  'description': item.description,
+                  'parentId': item.parentId,
                   'createdAt': item.createdAt
                 }),
         _assetFolderDeletionAdapter = DeletionAdapter(
@@ -689,6 +741,8 @@ class _$AssetFolderDao extends AssetFolderDao {
                   'id': item.id,
                   'name': item.name,
                   'icon': item.icon,
+                  'description': item.description,
+                  'parentId': item.parentId,
                   'createdAt': item.createdAt
                 });
 
@@ -712,7 +766,36 @@ class _$AssetFolderDao extends AssetFolderDao {
             id: row['id'] as String,
             name: row['name'] as String,
             icon: row['icon'] as String,
+            description: row['description'] as String?,
+            parentId: row['parentId'] as String?,
             createdAt: row['createdAt'] as int));
+  }
+
+  @override
+  Future<List<AssetFolder>> getRootFolders() async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM AssetFolder WHERE parentId IS NULL ORDER BY createdAt ASC',
+        mapper: (Map<String, Object?> row) => AssetFolder(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            icon: row['icon'] as String,
+            description: row['description'] as String?,
+            parentId: row['parentId'] as String?,
+            createdAt: row['createdAt'] as int));
+  }
+
+  @override
+  Future<List<AssetFolder>> getChildFolders(String parentId) async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM AssetFolder WHERE parentId = ?1 ORDER BY createdAt ASC',
+        mapper: (Map<String, Object?> row) => AssetFolder(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            icon: row['icon'] as String,
+            description: row['description'] as String?,
+            parentId: row['parentId'] as String?,
+            createdAt: row['createdAt'] as int),
+        arguments: [parentId]);
   }
 
   @override

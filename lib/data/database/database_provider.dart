@@ -4,7 +4,7 @@ import 'app_database.dart';
 final databaseProvider = FutureProvider<AppDatabase>((ref) async {
   final database = await $FloorAppDatabase
       .databaseBuilder('local_hub.db')
-      .addMigrations([migration1to2, migration2to3, migration3to4, migration4to5])
+      .addMigrations([migration1to2, migration2to3, migration3to4, migration4to5, migration5to6])
       .build();
   return database;
 });
