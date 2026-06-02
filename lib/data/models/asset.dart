@@ -10,12 +10,13 @@ class Asset {
   final String? notes;
   final String? imagePath;
   final String? tags;
+  final String? filePath;
   final int createdAt;
   final int updatedAt;
 
   const Asset({
     required this.id, required this.folderId, required this.title,
-    required this.type, this.notes, this.imagePath, this.tags,
+    required this.type, this.notes, this.imagePath, this.tags, this.filePath,
     required this.createdAt, required this.updatedAt,
   });
 

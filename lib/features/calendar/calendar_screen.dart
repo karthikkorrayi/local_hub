@@ -13,22 +13,28 @@ import '../../data/models/job.dart';
 import 'calendar_provider.dart';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
-const _kCategories = ['payment', 'ticket', 'planning', 'free', 'other'];
+const _kCategories = ['travel', 'entertainment', 'meeting', 'busy', 'occasion', 'personal', 'work', 'other'];
 const _kCategoryLabels = {
-  'payment':  '💳 Payment',
-  'ticket':   '🎟 Ticket',
-  'planning': '📋 Planning',
-  'free':     '🕐 Free Time',
-  'other':    '📌 Other',
+  'travel': '✈️ Travel',
+  'entertainment': '🎬 Entertainment',
+  'meeting': '🤝 Meeting',
+  'busy': '⛔ Busy',
+  'occasion': '🎉 Occasion',
+  'personal': '🏠 Personal',
+  'work': '💼 Work',
+  'other': '📌 Other',
 };
 const _kCategoryColors = {
-  'payment':  Color(0xFFEF4444),
-  'ticket':   Color(0xFF8B5CF6),
-  'planning': Color(0xFF3B82F6),
-  'free':     Color(0xFF10B981),
-  'other':    Color(0xFF6B7280),
+  'travel': Color(0xFF0EA5E9),
+  'entertainment': Color(0xFF8B5CF6),
+  'meeting': Color(0xFFF59E0B),
+  'busy': Color(0xFFEF4444),
+  'occasion': Color(0xFFEC4899),
+  'personal': Color(0xFF10B981),
+  'work': Color(0xFF3B82F6),
+  'other': Color(0xFF6B7280),
 };
-const _kMoods = ['😊', '😐', '😓', '🔥', '💼', '😴', '🎯', '💪'];
+const _kMoods = ['😀', '😔', '😡', '😴', '😍', '🤔'];
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 class CalendarScreen extends ConsumerWidget {
@@ -36,7 +42,7 @@ class CalendarScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isMonthView = ref.watch(calendarViewProvider);
+    final currentView = ref.watch(calendarViewProvider);
 
     return Scaffold(
       backgroundColor: AndroidTheme.surface,
@@ -58,15 +64,21 @@ class CalendarScreen extends ConsumerWidget {
               children: [
                 _ViewTab(
                   label: 'Month',
-                  selected: isMonthView,
+                  selected: currentView == 'month',
                   onTap: () =>
-                      ref.read(calendarViewProvider.notifier).state = true,
+                      ref.read(calendarViewProvider.notifier).state = 'month',
+                ),
+                _ViewTab(
+                  label: 'Day',
+                  selected: currentView == 'day',
+                  onTap: () =>
+                      ref.read(calendarViewProvider.notifier).state = 'day',
                 ),
                 _ViewTab(
                   label: 'Week',
-                  selected: !isMonthView,
+                  selected: currentView == 'week',
                   onTap: () =>
-                      ref.read(calendarViewProvider.notifier).state = false,
+                      ref.read(calendarViewProvider.notifier).state = 'week',
                 ),
               ],
             ),
@@ -76,7 +88,7 @@ class CalendarScreen extends ConsumerWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
-          onPressed: () => _showEventForm(context, ref),
+          onPressed: () => _showAddMenu(context, ref),
           backgroundColor: AndroidTheme.primary,
           foregroundColor: Colors.white,
           elevation: 2,
@@ -86,7 +98,7 @@ class CalendarScreen extends ConsumerWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: Column(
         children: [
-          _CalendarCard(isMonthView: isMonthView),
+          if (currentView != 'day') _CalendarCard(isMonthView: currentView == 'month'),
           Expanded(
             child: _DayDetailPanel(
               onEditEvent: (e) => _showEventForm(context, ref, existing: e),
@@ -98,12 +110,49 @@ class CalendarScreen extends ConsumerWidget {
   }
 
   void _showEventForm(BuildContext context, WidgetRef ref,
-      {CalendarEvent? existing}) {
+      {String itemType = 'event', CalendarEvent? existing}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _EventFormSheet(ref: ref, existing: existing),
+      builder: (_) => _EventFormSheet(ref: ref, existing: existing, initialType: itemType),
+    );
+  }
+
+
+  void _showAddMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final entry in const [
+              ['birthday', 'Birthday', Icons.cake_outlined],
+              ['task', 'Task', Icons.task_alt_rounded],
+              ['event', 'Event', Icons.event_outlined],
+              ['diary', 'Personal Diary', Icons.mood_outlined],
+            ])
+              ListTile(
+                leading: Icon(entry[2] as IconData),
+                title: Text(entry[1] as String),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  if (entry[0] == 'diary') {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      builder: (_) => _DaySheet(day: ref.read(selectedDayProvider), ref: ref),
+                    );
+                  } else {
+                    _showEventForm(context, ref, itemType: entry[0] as String);
+                  }
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -647,6 +696,9 @@ class _DayDetailPanel extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
 
+        const _WeeklyOverview(),
+        const SizedBox(height: 12),
+
         // Events quick list
         eventsAsync.when(
           data: (events) => events.isEmpty
@@ -684,6 +736,60 @@ class _DayDetailPanel extends ConsumerWidget {
       ],
     );
   }
+}
+
+
+
+class _WeeklyOverview extends ConsumerWidget {
+  const _WeeklyOverview();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final events = ref.watch(weekEventsProvider).valueOrNull ?? [];
+    final birthdays = events.where((e) => e.itemType == 'birthday').toList();
+    final tasks = events.where((e) => e.itemType == 'task').toList();
+    final regular = events.where((e) => e.itemType == null || e.itemType == 'event').toList();
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Weekly Overview', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          _WeekLine(label: 'Birthdays this week', items: birthdays),
+          _WeekLine(label: 'Tasks this week', items: tasks),
+          _WeekLine(label: 'Events this week', items: regular),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekLine extends ConsumerWidget {
+  final String label;
+  final List<CalendarEvent> items;
+  const _WeekLine({required this.label, required this.items});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          children: [
+            Text('$label:', style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textSecondary, fontWeight: FontWeight.w700)),
+            if (items.isEmpty)
+              Text('None', style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textTertiary))
+            else
+              ...items.take(4).map((e) => ActionChip(
+                    label: Text(e.title),
+                    onPressed: () {
+                      ref.read(selectedDayProvider.notifier).state = DateTime.parse(e.date);
+                    },
+                  )),
+          ],
+        ),
+      );
 }
 
 // ── Week todos in sheet ────────────────────────────────────────────────────────
@@ -923,6 +1029,7 @@ class _EventTile extends ConsumerWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('${event.itemType ?? 'event'}${event.itemType == 'task' ? (event.isDone ? ' • Complete' : ' • Pending') : event.itemType == 'birthday' ? ' • repeats annually' : ''}', style: GoogleFonts.inter(fontSize: 11, color: AndroidTheme.textTertiary)),
           if (event.startTime != null)
             Text(
               '${event.startTime}${event.endTime != null ? ' → ${event.endTime}' : ''}',
@@ -1005,7 +1112,8 @@ class _EventTile extends ConsumerWidget {
 class _EventFormSheet extends StatefulWidget {
   final WidgetRef ref;
   final CalendarEvent? existing;
-  const _EventFormSheet({required this.ref, this.existing});
+  final String initialType;
+  const _EventFormSheet({required this.ref, this.existing, this.initialType = 'event'});
 
   @override
   State<_EventFormSheet> createState() => _EventFormSheetState();
@@ -1017,6 +1125,10 @@ class _EventFormSheetState extends State<_EventFormSheet> {
   late final TextEditingController _startTime;
   late final TextEditingController _endTime;
   late String _category;
+  late String _itemType;
+  late final TextEditingController _contactInfo;
+  late final TextEditingController _attachmentPath;
+  bool _isDone = false;
   Job? _linkedJob;
   bool _saving = false;
 
@@ -1028,7 +1140,11 @@ class _EventFormSheetState extends State<_EventFormSheet> {
     _description = TextEditingController(text: e?.description ?? '');
     _startTime   = TextEditingController(text: e?.startTime ?? '');
     _endTime     = TextEditingController(text: e?.endTime ?? '');
-    _category    = e?.category ?? 'other';
+    _category    = e?.category ?? (widget.initialType == 'birthday' ? 'occasion' : 'other');
+    _itemType = e?.itemType ?? widget.initialType;
+    _contactInfo = TextEditingController(text: e?.contactInfo ?? '');
+    _attachmentPath = TextEditingController(text: e?.attachmentPath ?? '');
+    _isDone = e?.isDone ?? false;
   }
 
   @override
@@ -1037,6 +1153,8 @@ class _EventFormSheetState extends State<_EventFormSheet> {
     _description.dispose();
     _startTime.dispose();
     _endTime.dispose();
+    _contactInfo.dispose();
+    _attachmentPath.dispose();
     super.dispose();
   }
 
@@ -1073,6 +1191,10 @@ class _EventFormSheetState extends State<_EventFormSheet> {
           ? null
           : _endTime.text.trim(),
       category:       _category,
+      itemType:       _itemType,
+      contactInfo:    _contactInfo.text.trim().isEmpty ? null : _contactInfo.text.trim(),
+      attachmentPath: _attachmentPath.text.trim().isEmpty ? null : _attachmentPath.text.trim(),
+      isDone:         _isDone,
       linkedJobId:    _linkedJob?.id,
       linkedJobTitle: _linkedJob?.title,
       createdAt:      existing?.createdAt ?? now,
@@ -1102,15 +1224,27 @@ class _EventFormSheetState extends State<_EventFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              isEdit ? 'Edit Event' : 'Add Event',
+              isEdit ? 'Edit Calendar Item' : 'Add ${_itemType[0].toUpperCase()}${_itemType.substring(1)}',
               style: GoogleFonts.inter(
                   fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 16),
 
+            DropdownButtonFormField<String>(
+              value: _itemType,
+              decoration: const InputDecoration(labelText: 'Type'),
+              items: const [
+                DropdownMenuItem(value: 'birthday', child: Text('Birthday')),
+                DropdownMenuItem(value: 'task', child: Text('Task')),
+                DropdownMenuItem(value: 'event', child: Text('Event')),
+              ],
+              onChanged: isEdit ? null : (v) => setState(() => _itemType = v ?? _itemType),
+            ),
+            const SizedBox(height: 12),
+
             TextField(
               controller: _title,
-              decoration: const InputDecoration(labelText: 'Title *'),
+              decoration: InputDecoration(labelText: _itemType == 'birthday' ? 'Name *' : _itemType == 'task' ? 'Task Title *' : 'Event Title *'),
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
@@ -1165,6 +1299,29 @@ class _EventFormSheetState extends State<_EventFormSheet> {
               maxLines: 2,
             ),
             const SizedBox(height: 12),
+
+            if (_itemType == 'birthday') ...[
+              TextField(
+                controller: _contactInfo,
+                decoration: const InputDecoration(labelText: 'Contact / Gift ideas / Gift link'),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_itemType == 'task') ...[
+              TextField(
+                controller: _attachmentPath,
+                decoration: const InputDecoration(labelText: 'Optional Attachment Path'),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Complete'),
+                value: _isDone,
+                onChanged: (v) => setState(() => _isDone = v),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             jobsAsync.when(
               data: (jobs) => jobs.isEmpty

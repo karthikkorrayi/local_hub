@@ -3,7 +3,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/android_theme.dart';
 import '../../core/widgets/app_card.dart';
@@ -140,7 +142,7 @@ class _WishlistCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AppCard(
-      onTap: () => _showPreview(context, ref),
+      onTap: () => context.push('/wishlist/${item.id}', extra: item),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -521,6 +523,7 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
   late final TextEditingController _productUrl;
   late final TextEditingController _imageUrl;
   String? _localImagePath;
+  DateTime? _targetPurchaseDate;
   bool _isPurchased = false;
   bool _saving = false;
 
@@ -541,6 +544,9 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
         (item?.imageUrl != null && !item!.imageUrl!.startsWith('http'))
             ? item.imageUrl
             : null;
+    _targetPurchaseDate = item?.targetPurchaseAt == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(item!.targetPurchaseAt!);
     _isPurchased = item?.isPurchased ?? false;
   }
 
@@ -564,6 +570,16 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     }
   }
 
+  Future<void> _pickTargetPurchaseDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _targetPurchaseDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+    if (picked != null) setState(() => _targetPurchaseDate = picked);
+  }
+
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
     setState(() => _saving = true);
@@ -584,7 +600,9 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
       imageUrl:   imageValue,
       category:   _category.text.trim().isEmpty ? null : _category.text.trim(),
       productUrl: _productUrl.text.trim().isEmpty ? null : _productUrl.text.trim(),
+      targetPurchaseAt: _targetPurchaseDate?.millisecondsSinceEpoch,
       isPurchased: _isPurchased,
+      purchasedAt: _isPurchased ? (existing?.purchasedAt ?? now) : null,
       createdAt:  existing?.createdAt ?? now,
     );
 
@@ -705,6 +723,33 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
               onChanged: (_) => setState(() => _localImagePath = null),
             ),
             const SizedBox(height: 12),
+
+            GestureDetector(
+              onTap: _pickTargetPurchaseDate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AndroidTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AndroidTheme.divider),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.event_available_outlined, size: 18, color: AndroidTheme.textSecondary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _targetPurchaseDate == null
+                            ? 'Target purchase date'
+                            : 'Target: ${_targetPurchaseDate!.day}/${_targetPurchaseDate!.month}/${_targetPurchaseDate!.year}',
+                        style: GoogleFonts.inter(fontSize: 14, color: _targetPurchaseDate == null ? AndroidTheme.textTertiary : AndroidTheme.textPrimary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _productUrl,
               decoration: const InputDecoration(
@@ -744,5 +789,84 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
         ),
       ),
     );
+  }
+}
+// ── Dedicated wishlist details page ───────────────────────────────────────────
+class WishlistDetailsScreen extends ConsumerWidget {
+  final String itemId;
+  final WishlistItem? initialItem;
+  const WishlistDetailsScreen({super.key, required this.itemId, this.initialItem});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncItem = ref.watch(wishlistItemByIdProvider(itemId));
+    final item = asyncItem.valueOrNull ?? initialItem;
+    return Scaffold(
+      backgroundColor: AndroidTheme.surface,
+      appBar: AppBar(title: const Text('Wishlist Details')),
+      body: item == null
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              children: [
+                AppCard(
+                  padding: EdgeInsets.zero,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: SizedBox(height: 320, child: _ItemImage(item: item)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.name, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 8),
+                      Text(item.price == null ? 'No price set' : '₹${item.price!.toStringAsFixed(0)}',
+                          style: GoogleFonts.inter(fontSize: 20, color: AndroidTheme.primary, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 12),
+                      Text('Target Purchase Date: ${_formatDate(item.targetPurchaseAt)}',
+                          style: GoogleFonts.inter(color: AndroidTheme.textSecondary)),
+                      if (item.purchasedAt != null) ...[
+                        const SizedBox(height: 6),
+                        Text('Purchased: ${_formatDate(item.purchasedAt)}',
+                            style: GoogleFonts.inter(color: Colors.green, fontWeight: FontWeight.w600)),
+                      ],
+                      const SizedBox(height: 18),
+                      if (item.productUrl != null && item.productUrl!.isNotEmpty)
+                        FilledButton.icon(
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('Open Product Link'),
+                          onPressed: () => _launch(item.productUrl!),
+                        ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        icon: Icon(item.isPurchased ? Icons.undo_rounded : Icons.check_circle_outline_rounded),
+                        label: Text(item.isPurchased ? 'Mark as Not Purchased' : 'Mark as Purchased'),
+                        onPressed: () async {
+                          final actions = await ref.read(wishlistActionsProvider.future);
+                          await actions.togglePurchased(item);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  static String _formatDate(int? ms) {
+    if (ms == null) return 'Not set';
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month]} ${d.day}, ${d.year}';
+  }
+
+  Future<void> _launch(String value) async {
+    final uri = Uri.tryParse(value.startsWith('http') ? value : 'https://$value');
+    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }

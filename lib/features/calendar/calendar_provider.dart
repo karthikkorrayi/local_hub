@@ -10,7 +10,7 @@ import '../../data/models/job.dart';
 import '../jobs/job_provider.dart';
 
 final selectedDayProvider = StateProvider<DateTime>((ref) => DateTime.now());
-final calendarViewProvider = StateProvider<bool>((ref) => true);
+final calendarViewProvider = StateProvider<String>((ref) => 'month');
 
 String dateKey(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -52,6 +52,14 @@ final dayEntryProvider = FutureProvider<DayEntry?>((ref) async {
   return db.dayEntryDao.getEntryForDate(dateKey(day));
 });
 
+final weekEventsProvider = FutureProvider<List<CalendarEvent>>((ref) async {
+  final db = await ref.watch(databaseProvider.future);
+  final day = ref.watch(selectedDayProvider);
+  final start = day.subtract(Duration(days: day.weekday - 1));
+  final end = start.add(const Duration(days: 6));
+  return db.calendarDao.getEventsInRange(dateKey(start), dateKey(end));
+});
+
 final weekTodosProvider = FutureProvider<List<WeekTodo>>((ref) async {
   final db = await ref.watch(databaseProvider.future);
   final day = ref.watch(selectedDayProvider);
@@ -72,17 +80,29 @@ class CalendarActions {
 
   Future<void> addEvent(CalendarEvent event) async {
     await _calDao.insertEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider);
+    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
   }
 
   Future<void> updateEvent(CalendarEvent event) async {
     await _calDao.updateEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider);
+    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
   }
 
   Future<void> deleteEvent(CalendarEvent event) async {
     await _calDao.deleteEvent(event);
-    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider);
+    _ref.invalidate(dayEventsProvider); _ref.invalidate(monthEventsProvider); _ref.invalidate(weekEventsProvider);
+  }
+
+  Future<void> toggleEventDone(CalendarEvent event) async {
+    final updated = CalendarEvent(
+      id: event.id, title: event.title, description: event.description,
+      date: event.date, startTime: event.startTime, endTime: event.endTime,
+      category: event.category, itemType: event.itemType, contactInfo: event.contactInfo,
+      attachmentPath: event.attachmentPath, isDone: !event.isDone,
+      linkedJobId: event.linkedJobId, linkedJobTitle: event.linkedJobTitle,
+      createdAt: event.createdAt,
+    );
+    await updateEvent(updated);
   }
 
   Future<void> saveDayEntry(DayEntry entry) async {

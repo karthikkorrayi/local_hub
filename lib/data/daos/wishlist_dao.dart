@@ -9,6 +9,9 @@ abstract class WishlistDao {
   @Query('SELECT * FROM WishlistItem WHERE isPurchased = :purchased')
   Future<List<WishlistItem>> getItemsByPurchased(bool purchased);
 
+  @Query('SELECT * FROM WishlistItem WHERE id = :id')
+  Future<WishlistItem?> getItemById(String id);
+
   @insert
   Future<void> insertItem(WishlistItem item);
 

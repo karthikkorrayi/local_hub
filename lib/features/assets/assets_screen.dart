@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/asset.dart';
@@ -60,7 +61,7 @@ class AssetsScreen extends ConsumerWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
-          onPressed: () => _showAssetForm(context, ref),
+          onPressed: () => _showFolderForm(context, ref),
           backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           elevation: 3,
@@ -418,11 +419,12 @@ class _AssetCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final color = _kTypeColors[asset.type] ?? const Color(0xFF757575);
     final hasImage = asset.imagePath != null && asset.imagePath!.isNotEmpty;
+    final hasFile = asset.filePath != null && asset.filePath!.isNotEmpty;
 
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => onEdit(asset),
+        onTap: () => _showPreview(context),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -451,7 +453,7 @@ class _AssetCard extends ConsumerWidget {
                             fontWeight: FontWeight.w600, fontSize: 14)),
                     const SizedBox(height: 2),
                     Text(
-                      _kTypeLabels[asset.type] ?? asset.type,
+                      hasFile ? asset.filePath!.split('/').last : (_kTypeLabels[asset.type] ?? asset.type),
                       style: TextStyle(color: color, fontSize: 12),
                     ),
                     if (asset.notes != null && asset.notes!.isNotEmpty) ...[
@@ -489,18 +491,68 @@ class _AssetCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              IconButton(
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'preview') _showPreview(context);
+                  if (value == 'edit') onEdit(asset);
+                  if (value == 'download') _download(asset);
+                  if (value == 'delete') _confirmDelete(context, ref);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'preview', child: Text('Preview')),
+                  PopupMenuItem(value: 'download', child: Text('Download')),
+                  PopupMenuItem(value: 'edit', child: Text('Edit metadata')),
+                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+                icon: const Icon(Icons.more_vert, size: 18),
+              ),
+              /*IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
                 color: Colors.grey.shade400,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () => _confirmDelete(context, ref),
-              ),
+              ),*/
             ],
           ),
         ),
       ),
     );
+  }
+
+
+  void _showPreview(BuildContext context) {
+    final path = asset.filePath ?? asset.imagePath;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(asset.title),
+        content: SizedBox(
+          width: 460,
+          child: path == null
+              ? Text(asset.notes ?? 'No preview available')
+              : _isImage(path)
+                  ? Image.file(File(path), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Image preview unavailable.'))
+                  : path.toLowerCase().endsWith('.pdf')
+                      ? Text('PDF ready for preview: ${path.split('/').last}')
+                      : Text('Preview not supported for ${path.split('/').last}. Use Download/Open.'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  bool _isImage(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.gif');
+  }
+
+  Future<void> _download(Asset asset) async {
+    final path = asset.filePath ?? asset.imagePath;
+    if (path == null) return;
+    await launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
   }
 
   Widget _typeIcon(Color color) {
@@ -553,17 +605,20 @@ class _FolderFormSheet extends StatefulWidget {
 class _FolderFormSheetState extends State<_FolderFormSheet> {
   late final TextEditingController _name;
   late String _icon;
+  late final TextEditingController _description;
 
   @override
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.existing?.name ?? '');
     _icon = widget.existing?.icon ?? 'other';
+    _description = TextEditingController(text: widget.existing?.description ?? '');
   }
 
   @override
   void dispose() {
     _name.dispose();
+    _description.dispose();
     super.dispose();
   }
 
@@ -575,6 +630,7 @@ class _FolderFormSheetState extends State<_FolderFormSheet> {
       id: widget.existing?.id ?? const Uuid().v4(),
       name: _name.text.trim(),
       icon: _icon,
+      description: _description.text.trim().isEmpty ? null : _description.text.trim(),
       createdAt: widget.existing?.createdAt ?? now,
     );
     if (widget.existing == null) {
@@ -606,6 +662,15 @@ class _FolderFormSheetState extends State<_FolderFormSheet> {
             ),
             textCapitalization: TextCapitalization.words,
             autofocus: true,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _description,
+            decoration: const InputDecoration(
+              labelText: 'Description (optional)',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
           ),
           const SizedBox(height: 16),
           const Text('Icon', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -661,6 +726,7 @@ class _AssetFormSheetState extends State<_AssetFormSheet> {
   late String _type;
   late Set<String> _tags;
   String? _imagePath;
+  String? _filePath;
   String? _folderId;
   bool _saving = false;
 
@@ -674,6 +740,7 @@ class _AssetFormSheetState extends State<_AssetFormSheet> {
     _type     = a?.type ?? 'document';
     _tags     = Set.from(a?.tagList ?? []);
     _imagePath = a?.imagePath;
+    _filePath = a?.filePath;
     _folderId  = a?.folderId ??
         widget.ref.read(selectedFolderProvider)?.id;
   }
@@ -682,6 +749,15 @@ class _AssetFormSheetState extends State<_AssetFormSheet> {
   void dispose() {
     _title.dispose(); _notes.dispose(); _newTag.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickFile() async {
+    const typeGroup = XTypeGroup(
+      label: 'Files',
+      extensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'zip'],
+    );
+    final file = await openFile(acceptedTypeGroups: [typeGroup]);
+    if (file != null) setState(() => _filePath = file.path);
   }
 
   Future<void> _pickImage() async {
@@ -711,6 +787,7 @@ class _AssetFormSheetState extends State<_AssetFormSheet> {
       type:      _type,
       notes:     _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       imagePath: _imagePath,
+      filePath: _filePath,
       tags:      _tags.isEmpty ? null : _tags.join(','),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
@@ -799,6 +876,28 @@ class _AssetFormSheetState extends State<_AssetFormSheet> {
                 alignLabelWithHint: true,
               ),
               maxLines: 4,
+            ),
+            const SizedBox(height: 12),
+
+
+            GestureDetector(
+              onTap: _pickFile,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.upload_file_rounded, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(_filePath == null ? 'Upload file (PDF, Office, image, ZIP)' : _filePath!.split('/').last, overflow: TextOverflow.ellipsis)),
+                    if (_filePath != null) IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(() => _filePath = null)),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 12),
 

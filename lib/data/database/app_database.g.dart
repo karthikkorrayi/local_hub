@@ -92,7 +92,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 3,
+      version: 5,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -108,7 +108,7 @@ class _$AppDatabase extends AppDatabase {
       },
       onCreate: (database, version) async {
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `Job` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `company` TEXT NOT NULL, `status` TEXT NOT NULL, `notes` TEXT, `url` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `Job` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `company` TEXT NOT NULL, `status` TEXT NOT NULL, `notes` TEXT, `url` TEXT, `resumePath` TEXT, `appliedAt` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `isPurchased` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
@@ -180,6 +180,8 @@ class _$JobDao extends JobDao {
                   'status': item.status,
                   'notes': item.notes,
                   'url': item.url,
+                  'resumePath': item.resumePath,
+                  'appliedAt': item.appliedAt,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -194,6 +196,8 @@ class _$JobDao extends JobDao {
                   'status': item.status,
                   'notes': item.notes,
                   'url': item.url,
+                  'resumePath': item.resumePath,
+                  'appliedAt': item.appliedAt,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 }),
@@ -208,6 +212,8 @@ class _$JobDao extends JobDao {
                   'status': item.status,
                   'notes': item.notes,
                   'url': item.url,
+                  'resumePath': item.resumePath,
+                  'appliedAt': item.appliedAt,
                   'createdAt': item.createdAt,
                   'updatedAt': item.updatedAt
                 });
@@ -234,6 +240,8 @@ class _$JobDao extends JobDao {
             status: row['status'] as String,
             notes: row['notes'] as String?,
             url: row['url'] as String?,
+            resumePath: row['resumePath'] as String?,
+            appliedAt: row['appliedAt'] as int?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int));
   }
@@ -249,6 +257,8 @@ class _$JobDao extends JobDao {
             status: row['status'] as String,
             notes: row['notes'] as String?,
             url: row['url'] as String?,
+            resumePath: row['resumePath'] as String?,
+            appliedAt: row['appliedAt'] as int?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int),
         arguments: [status]);
@@ -264,6 +274,8 @@ class _$JobDao extends JobDao {
             status: row['status'] as String,
             notes: row['notes'] as String?,
             url: row['url'] as String?,
+            resumePath: row['resumePath'] as String?,
+            appliedAt: row['appliedAt'] as int?,
             createdAt: row['createdAt'] as int,
             updatedAt: row['updatedAt'] as int),
         arguments: [id]);
@@ -373,6 +385,21 @@ class _$WishlistDao extends WishlistDao {
             isPurchased: (row['isPurchased'] as int) != 0,
             createdAt: row['createdAt'] as int),
         arguments: [purchased ? 1 : 0]);
+  }
+
+  @override
+  Future<WishlistItem?> getItemById(String id) async {
+    return _queryAdapter.query('SELECT * FROM WishlistItem WHERE id = ?1',
+        mapper: (Map<String, Object?> row) => WishlistItem(
+            id: row['id'] as String,
+            name: row['name'] as String,
+            price: row['price'] as double?,
+            imageUrl: row['imageUrl'] as String?,
+            category: row['category'] as String?,
+            productUrl: row['productUrl'] as String?,
+            isPurchased: (row['isPurchased'] as int) != 0,
+            createdAt: row['createdAt'] as int),
+        arguments: [id]);
   }
 
   @override
@@ -602,7 +629,7 @@ class _$AssetDao extends AssetDao {
   @override
   Future<List<Asset>> searchAssets(String query) async {
     return _queryAdapter.queryList(
-        'SELECT * FROM Asset      WHERE title LIKE ?1      OR notes LIKE ?1      OR tags LIKE ?1     ORDER BY updatedAt DESC',
+        'SELECT * FROM Asset WHERE title LIKE ?1 OR notes LIKE ?1 OR tags LIKE ?1 ORDER BY updatedAt DESC',
         mapper: (Map<String, Object?> row) => Asset(id: row['id'] as String, folderId: row['folderId'] as String, title: row['title'] as String, type: row['type'] as String, notes: row['notes'] as String?, imagePath: row['imagePath'] as String?, tags: row['tags'] as String?, createdAt: row['createdAt'] as int, updatedAt: row['updatedAt'] as int),
         arguments: [query]);
   }
