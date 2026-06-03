@@ -80,14 +80,14 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
           if (!Platform.isAndroid)
             IconButton(
               icon: const Icon(Icons.add_rounded),
-              onPressed: () => _showJobForm(context, ref),
+              onPressed: () => _showJobForm(context),
             ),
         ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
-          onPressed: () => _showJobForm(context, ref),
+          onPressed: () => _showJobForm(context),
           backgroundColor: AndroidTheme.primary,
           foregroundColor: Colors.white,
           elevation: 3,
@@ -112,7 +112,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
                 return _JobList(
                   status: status,
                   jobs: columns[status] ?? [],
-                  onEdit: (job) => _showJobForm(context, ref, existing: job),
+                  onEdit: (job) => _showJobForm(context, existing: job),
                 );
               },
             ),
@@ -122,12 +122,12 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
     );
   }
 
-  void _showJobForm(BuildContext context, WidgetRef ref, {Job? existing}) {
+  void _showJobForm(BuildContext context, {Job? existing}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _JobFormSheet(ref: ref, existing: existing),
+      builder: (_) => _JobFormSheet(existing: existing),
     );
   }
 }
@@ -324,195 +324,11 @@ class _JobCard extends ConsumerWidget {
     );
   }
 
-  void _showPreview(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _JobPreviewSheet(job: job, onEdit: onEdit),
-    );
-  }
-
   String _formatDate(int ms) {
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${d.day}/${d.month}/${d.year}';
-  }
-
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete job?'),
-        content: Text('Remove "${job.title}" at ${job.company}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              final actions = await ref.read(jobActionsProvider.future);
-              await actions.deleteJob(job);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Job preview sheet ──────────────────────────────────────────────────────────
-class _JobPreviewSheet extends StatelessWidget {
-  final Job job;
-  final void Function(Job) onEdit;
-  const _JobPreviewSheet({required this.job, required this.onEdit});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _kStatusColors[job.status] ?? AndroidTheme.textTertiary;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: AndroidTheme.card,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            // Drag handle
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AndroidTheme.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                children: [
-                  // Status badge
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(_kStatusIcons[job.status],
-                                size: 14, color: color),
-                            const SizedBox(width: 6),
-                            Text(
-                              _kLabels[job.status]!,
-                              style: GoogleFonts.inter(
-                                  color: color,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Title & company
-                  Text(
-                    job.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AndroidTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    job.company,
-                    style: GoogleFonts.inter(
-                        fontSize: 16, color: AndroidTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Detail rows
-                  if (job.appliedAt != null)
-                    _DetailRow(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Applied date',
-                      value: _formatDate(job.appliedAt!),
-                    ),
-                  _DetailRow(
-                    icon: Icons.update_rounded,
-                    label: 'Last updated',
-                    value: _formatDate(job.updatedAt),
-                  ),
-                  if (job.url != null && job.url!.isNotEmpty)
-                    _DetailRow(
-                      icon: Icons.link_rounded,
-                      label: 'Job URL',
-                      value: job.url!,
-                      valueColor: AndroidTheme.primary,
-                    ),
-                  if (job.resumePath != null && job.resumePath!.isNotEmpty)
-                    _DetailRow(
-                      icon: Icons.description_outlined,
-                      label: 'Resume',
-                      value: job.resumePath!.split('/').last,
-                      valueColor: AndroidTheme.primary,
-                    ),
-
-                  // Notes
-                  if (job.notes != null && job.notes!.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    _DetailRow(
-                      icon: Icons.notes_rounded,
-                      label: 'Notes',
-                      value: job.notes!,
-                    ),
-                  ],
-
-                  const SizedBox(height: 8),
-                  Text(
-                    'Created ${_formatDate(job.createdAt)}',
-                    style: GoogleFonts.inter(
-                        fontSize: 11, color: AndroidTheme.textTertiary),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Edit button
-                  FilledButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit Job'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onEdit(job);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(int ms) {
-    final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${d.day}/${d.month}/${d.year}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 }
 
@@ -577,16 +393,15 @@ class _DetailRow extends StatelessWidget {
 }
 
 // ── Add / Edit form ────────────────────────────────────────────────────────────
-class _JobFormSheet extends StatefulWidget {
-  final WidgetRef ref;
+class _JobFormSheet extends ConsumerStatefulWidget {
   final Job? existing;
-  const _JobFormSheet({required this.ref, this.existing});
+  const _JobFormSheet({this.existing});
 
   @override
-  State<_JobFormSheet> createState() => _JobFormSheetState();
+  ConsumerState<_JobFormSheet> createState() => _JobFormSheetState();
 }
 
-class _JobFormSheetState extends State<_JobFormSheet> {
+class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
   late final TextEditingController _title;
   late final TextEditingController _company;
   late final TextEditingController _notes;
@@ -647,27 +462,36 @@ class _JobFormSheetState extends State<_JobFormSheet> {
   Future<void> _save() async {
     if (_title.text.trim().isEmpty || _company.text.trim().isEmpty) return;
     setState(() => _saving = true);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = widget.existing;
-    final job = Job(
-      id:        existing?.id ?? const Uuid().v4(),
-      title:     _title.text.trim(),
-      company:   _company.text.trim(),
-      status:    _status,
-      notes:     _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      url:       _url.text.trim().isEmpty ? null : _url.text.trim(),
-      resumePath: _resumePath,
-      appliedAt:  _appliedAt?.millisecondsSinceEpoch,
-      createdAt:  existing?.createdAt ?? now,
-      updatedAt:  now,
-    );
-    final actions = await widget.ref.read(jobActionsProvider.future);
-    if (existing == null) {
-      await actions.addJob(job);
-    } else {
-      await actions.updateJob(job);
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final existing = widget.existing;
+      final job = Job(
+        id:         existing?.id ?? const Uuid().v4(),
+        title:      _title.text.trim(),
+        company:    _company.text.trim(),
+        status:     _status,
+        notes:      _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+        url:        _url.text.trim().isEmpty ? null : _url.text.trim(),
+        resumePath: _resumePath,
+        appliedAt:  _appliedAt?.millisecondsSinceEpoch,
+        createdAt:  existing?.createdAt ?? now,
+        updatedAt:  now,
+      );
+      final actions = await ref.read(jobActionsProvider.future);
+      if (existing == null) {
+        await actions.addJob(job);
+      } else {
+        await actions.updateJob(job);
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving job: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -683,7 +507,6 @@ class _JobFormSheetState extends State<_JobFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
             Row(
               children: [
                 Text(
@@ -715,7 +538,6 @@ class _JobFormSheetState extends State<_JobFormSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Status chips
             Text(
               'Status',
               style: GoogleFonts.inter(
@@ -759,7 +581,6 @@ class _JobFormSheetState extends State<_JobFormSheet> {
             ),
             const SizedBox(height: 16),
 
-            // Applied date picker
             GestureDetector(
               onTap: _pickAppliedDate,
               child: Container(
@@ -777,7 +598,7 @@ class _JobFormSheetState extends State<_JobFormSheet> {
                     const SizedBox(width: 10),
                     Text(
                       _appliedAt != null
-                          ? 'Applied: ${_appliedAt!.day}/${_appliedAt!.month}/${_appliedAt!.year}'
+                          ? 'Applied: ${_appliedAt!.day.toString().padLeft(2, '0')}/${_appliedAt!.month.toString().padLeft(2, '0')}/${_appliedAt!.year}'
                           : 'Set applied date',
                       style: GoogleFonts.inter(
                           fontSize: 14,
@@ -816,7 +637,6 @@ class _JobFormSheetState extends State<_JobFormSheet> {
             ),
             const SizedBox(height: 12),
 
-            // Resume picker
             GestureDetector(
               onTap: _pickResume,
               child: Container(
@@ -886,19 +706,37 @@ class _JobFormSheetState extends State<_JobFormSheet> {
 
   String _formatTs(int ms) {
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    return '${d.day}/${d.month}/${d.year}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 }
+
 // ── Dedicated job details page ────────────────────────────────────────────────
-class JobDetailsScreen extends ConsumerWidget {
+class JobDetailsScreen extends ConsumerStatefulWidget {
   final String jobId;
   final Job? initialJob;
   const JobDetailsScreen({super.key, required this.jobId, this.initialJob});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asyncJob = ref.watch(jobByIdProvider(jobId));
-    final job = asyncJob.valueOrNull ?? initialJob;
+  ConsumerState<JobDetailsScreen> createState() => _JobDetailsScreenState();
+}
+
+class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
+
+  void _showEditForm(BuildContext context, Job job) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _JobFormSheet(existing: job),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncJob = ref.watch(jobByIdProvider(widget.jobId));
+    final job = asyncJob.valueOrNull ?? widget.initialJob;
 
     return Scaffold(
       backgroundColor: AndroidTheme.surface,
@@ -931,10 +769,10 @@ class JobDetailsScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('Applied', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
-                            Text(_monthDate(job.appliedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                            Text(_formatDate(job.appliedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 8),
                             Text('Modified', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
-                            Text(_monthDate(job.updatedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
+                            Text(_formatDate(job.updatedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ),
@@ -960,32 +798,42 @@ class JobDetailsScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: FilledButton.icon(icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Comment'), onPressed: () => _showNoteDialog(context, ref, job))),
+                    Expanded(child: FilledButton.icon(icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Comment'), onPressed: () => _showNoteDialog(context, job))),
                     const SizedBox(width: 10),
-                    Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.swap_horiz_rounded, size: 18), label: const Text('Update Status'), onPressed: () => _showStatusDialog(context, ref, job))),
+                    Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.swap_horiz_rounded, size: 18), label: const Text('Update Status'), onPressed: () => _showStatusDialog(context, job))),
                   ],
                 ),
                 const SizedBox(height: 12),
                 _TimelineCard(title: 'Comment History', entries: job.noteTimeline),
                 const SizedBox(height: 24),
-                Center(
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                    label: const Text('Delete'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
-                    onPressed: () => _confirmDelete(context, ref, job),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: const Text('Edit'),
+                      onPressed: () => _showEditForm(context, job),
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton.icon(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                      label: const Text('Delete'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      onPressed: () => _confirmDelete(context, job),
+                    ),
+                  ],
                 ),
               ],
             ),
     );
   }
 
-  static String _monthDate(int? ms) {
+  static String _formatDate(int? ms) {
     if (ms == null) return 'Not set';
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month]} ${d.day}, ${d.year}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 
   Future<void> _launchExternal(String value) async {
@@ -997,7 +845,7 @@ class JobDetailsScreen extends ConsumerWidget {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ResumeViewerPage(path: path)));
   }
 
-  void _showNoteDialog(BuildContext context, WidgetRef ref, Job job) {
+  void _showNoteDialog(BuildContext context, Job job) {
     final note = TextEditingController();
     showDialog(
       context: context,
@@ -1017,7 +865,7 @@ class JobDetailsScreen extends ConsumerWidget {
     );
   }
 
-  void _showStatusDialog(BuildContext context, WidgetRef ref, Job job) {
+  void _showStatusDialog(BuildContext context, Job job) {
     var selected = job.status;
     showDialog(
       context: context,
@@ -1043,7 +891,7 @@ class JobDetailsScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, Job job) {
+  void _confirmDelete(BuildContext context, Job job) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1128,7 +976,7 @@ class _TimelineCard extends StatelessWidget {
               ...entries.map((e) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(JobDetailsScreen._monthDate(e.date), style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
+                      Text(_JobDetailsScreenState._formatDate(e.date), style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
                       const SizedBox(width: 12),
                       Expanded(child: Text(e.text, style: GoogleFonts.inter(fontSize: 14, color: AndroidTheme.textPrimary))),
                     ]),

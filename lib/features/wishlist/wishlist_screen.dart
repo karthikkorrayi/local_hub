@@ -31,14 +31,14 @@ class WishlistScreen extends ConsumerWidget {
           if (!Platform.isAndroid)
             IconButton(
               icon: const Icon(Icons.add_rounded),
-              onPressed: () => _showItemForm(context, ref),
+              onPressed: () => _showItemForm(context),
             ),
         ],
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 64), // clears the nav bar
+        padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
-          onPressed: () => _showItemForm(context, ref),
+          onPressed: () => _showItemForm(context),
           backgroundColor: AndroidTheme.primary,
           foregroundColor: Colors.white,
           elevation: 3,
@@ -80,7 +80,7 @@ class WishlistScreen extends ConsumerWidget {
                           height: size + 42,
                           child: _WishlistCard(
                             item: items[i],
-                            onEdit: (item) => _showItemForm(context, ref, existing: item),
+                            onEdit: (item) => _showItemForm(context, existing: item),
                           ),
                         );
                       }),
@@ -92,13 +92,12 @@ class WishlistScreen extends ConsumerWidget {
     );
   }
 
-  void _showItemForm(BuildContext context, WidgetRef ref,
-      {WishlistItem? existing}) {
+  void _showItemForm(BuildContext context, {WishlistItem? existing}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _WishlistFormSheet(ref: ref, existing: existing),
+      builder: (_) => _WishlistFormSheet(existing: existing),
     );
   }
 }
@@ -225,15 +224,6 @@ class _WishlistCard extends ConsumerWidget {
     );
   }
 
-  void _showPreview(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _WishlistPreviewSheet(item: item, onEdit: onEdit),
-    );
-  }
-
   void _confirmDelete(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -254,220 +244,6 @@ class _WishlistCard extends ConsumerWidget {
             },
             child: const Text('Delete',
                 style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Wishlist preview sheet ─────────────────────────────────────────────────────
-class _WishlistPreviewSheet extends StatelessWidget {
-  final WishlistItem item;
-  final void Function(WishlistItem) onEdit;
-  const _WishlistPreviewSheet({required this.item, required this.onEdit});
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (_, controller) => Container(
-        decoration: const BoxDecoration(
-          color: AndroidTheme.card,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          children: [
-            // Drag handle
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AndroidTheme.divider,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                controller: controller,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                children: [
-                  // Image
-                  if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: item.imageUrl!.startsWith('http')
-                          ? CachedNetworkImage(
-                              imageUrl: item.imageUrl!,
-                              height: 220,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                height: 220,
-                                color: AndroidTheme.surface,
-                                child: const Center(
-                                    child: CircularProgressIndicator()),
-                              ),
-                            )
-                          : Image.file(
-                              File(item.imageUrl!),
-                              height: 220,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                    )
-                  else
-                    Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: AndroidTheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AndroidTheme.divider),
-                      ),
-                      child: Icon(Icons.image_outlined,
-                          size: 48,
-                          color: AndroidTheme.textTertiary
-                              .withValues(alpha: 0.4)),
-                    ),
-                  const SizedBox(height: 20),
-
-                  // Name
-                  Text(
-                    item.name,
-                    style: GoogleFonts.inter(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: AndroidTheme.textPrimary,
-                    ),
-                  ),
-
-                  // Price
-                  if (item.price != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${item.price!.toStringAsFixed(0)}',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        color: AndroidTheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-
-                  // Details
-                  if (item.category != null)
-                    _WishlistDetailRow(
-                        label: 'Category', value: item.category!),
-
-                  if (item.productUrl != null &&
-                      item.productUrl!.isNotEmpty)
-                    _WishlistDetailRow(
-                      label: 'Product URL',
-                      value: item.productUrl!,
-                      valueColor: AndroidTheme.primary,
-                    ),
-
-                  // Purchased status
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: item.isPurchased
-                          ? Colors.green.shade50
-                          : AndroidTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: item.isPurchased
-                            ? Colors.green.shade200
-                            : AndroidTheme.divider,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          item.isPurchased
-                              ? Icons.check_circle
-                              : Icons.radio_button_unchecked,
-                          size: 18,
-                          color: item.isPurchased
-                              ? Colors.green
-                              : AndroidTheme.textTertiary,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          item.isPurchased
-                              ? 'Already purchased'
-                              : 'Not yet purchased',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: item.isPurchased
-                                ? Colors.green.shade700
-                                : AndroidTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Edit button
-                  FilledButton.icon(
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('Edit Item'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onEdit(item);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Wishlist detail row ────────────────────────────────────────────────────────
-class _WishlistDetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _WishlistDetailRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.inter(
-                fontSize: 11,
-                color: AndroidTheme.textTertiary,
-                fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-                fontSize: 14,
-                color: valueColor ?? AndroidTheme.textPrimary,
-                fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -510,16 +286,15 @@ class _ItemImage extends StatelessWidget {
 }
 
 // ── Add / Edit form ────────────────────────────────────────────────────────────
-class _WishlistFormSheet extends StatefulWidget {
-  final WidgetRef ref;
+class _WishlistFormSheet extends ConsumerStatefulWidget {
   final WishlistItem? existing;
-  const _WishlistFormSheet({required this.ref, this.existing});
+  const _WishlistFormSheet({this.existing});
 
   @override
-  State<_WishlistFormSheet> createState() => _WishlistFormSheetState();
+  ConsumerState<_WishlistFormSheet> createState() => _WishlistFormSheetState();
 }
 
-class _WishlistFormSheetState extends State<_WishlistFormSheet> {
+class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
   late final TextEditingController _name;
   late final TextEditingController _price;
   late final TextEditingController _category;
@@ -550,7 +325,9 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
 
   @override
   void dispose() {
-    _name.dispose(); _price.dispose(); _category.dispose();
+    _name.dispose();
+    _price.dispose();
+    _category.dispose();
     _productUrl.dispose();
     super.dispose();
   }
@@ -580,32 +357,38 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
     setState(() => _saving = true);
-
-    String? imageValue = _localImagePath?.isNotEmpty == true ? _localImagePath : null;
-
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final existing = widget.existing;
-
-    final item = WishlistItem(
-      id:         existing?.id ?? const Uuid().v4(),
-      name:       _name.text.trim(),
-      price:      double.tryParse(_price.text.trim()),
-      imageUrl:   imageValue,
-      category:   _category.text.trim().isEmpty ? null : _category.text.trim(),
-      productUrl: _productUrl.text.trim().isEmpty ? null : _productUrl.text.trim(),
-      targetPurchaseAt: _targetPurchaseDate?.millisecondsSinceEpoch,
-      isPurchased: _isPurchased,
-      purchasedAt: _isPurchased ? (existing?.purchasedAt ?? now) : null,
-      createdAt:  existing?.createdAt ?? now,
-    );
-
-    final actions = await widget.ref.read(wishlistActionsProvider.future);
-    if (existing == null) {
-      await actions.addItem(item);
-    } else {
-      await actions.updateItem(item);
+    try {
+      final String? imageValue =
+          _localImagePath?.isNotEmpty == true ? _localImagePath : null;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final existing = widget.existing;
+      final item = WishlistItem(
+        id:               existing?.id ?? const Uuid().v4(),
+        name:             _name.text.trim(),
+        price:            double.tryParse(_price.text.trim()),
+        imageUrl:         imageValue,
+        category:         _category.text.trim().isEmpty ? null : _category.text.trim(),
+        productUrl:       _productUrl.text.trim().isEmpty ? null : _productUrl.text.trim(),
+        targetPurchaseAt: _targetPurchaseDate?.millisecondsSinceEpoch,
+        isPurchased:      _isPurchased,
+        purchasedAt:      _isPurchased ? (existing?.purchasedAt ?? now) : null,
+        createdAt:        existing?.createdAt ?? now,
+      );
+      final actions = await ref.read(wishlistActionsProvider.future);
+      if (existing == null) {
+        await actions.addItem(item);
+      } else {
+        await actions.updateItem(item);
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving item: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -706,6 +489,7 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 12),
+
             GestureDetector(
               onTap: _pickTargetPurchaseDate,
               child: Container(
@@ -723,15 +507,26 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
                       child: Text(
                         _targetPurchaseDate == null
                             ? 'Target purchase date'
-                            : 'Target: ${_targetPurchaseDate!.day}/${_targetPurchaseDate!.month}/${_targetPurchaseDate!.year}',
-                        style: GoogleFonts.inter(fontSize: 14, color: _targetPurchaseDate == null ? AndroidTheme.textTertiary : AndroidTheme.textPrimary),
+                            : 'Target: ${_targetPurchaseDate!.day.toString().padLeft(2, '0')}/${_targetPurchaseDate!.month.toString().padLeft(2, '0')}/${_targetPurchaseDate!.year}',
+                        style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: _targetPurchaseDate == null
+                                ? AndroidTheme.textTertiary
+                                : AndroidTheme.textPrimary),
                       ),
                     ),
+                    if (_targetPurchaseDate != null)
+                      GestureDetector(
+                        onTap: () => setState(() => _targetPurchaseDate = null),
+                        child: Icon(Icons.close_rounded,
+                            size: 16, color: AndroidTheme.textTertiary),
+                      ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
+
             TextField(
               controller: _productUrl,
               decoration: const InputDecoration(
@@ -741,6 +536,7 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
+
             Container(
               decoration: BoxDecoration(
                 color: AndroidTheme.surface,
@@ -751,14 +547,14 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16),
                 title: Text('Already purchased',
-                    style:
-                        GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
+                    style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500)),
                 value: _isPurchased,
                 activeColor: AndroidTheme.primary,
                 onChanged: (v) => setState(() => _isPurchased = v),
               ),
             ),
             const SizedBox(height: 20),
+
             FilledButton(
               onPressed: _saving ? null : _save,
               child: Text(_saving
@@ -773,6 +569,7 @@ class _WishlistFormSheetState extends State<_WishlistFormSheet> {
     );
   }
 }
+
 // ── Dedicated wishlist details page ───────────────────────────────────────────
 class WishlistDetailsScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -802,7 +599,11 @@ class _WishlistDetailsScreenState extends ConsumerState<WishlistDetailsScreen> {
   Widget build(BuildContext context) {
     final items = ref.watch(filteredWishlistProvider);
     final asyncItem = ref.watch(wishlistItemByIdProvider(widget.itemId));
-    final current = asyncItem.valueOrNull ?? widget.initialItem;
+    final current = asyncItem.when(
+      data: (item) => item ?? widget.initialItem,
+      loading: () => widget.initialItem,
+      error: (_, __) => widget.initialItem,
+    );
     final pageItems = items.isNotEmpty ? items : [if (current != null) current];
     final foundIndex = current == null ? 0 : pageItems.indexWhere((i) => i.id == current.id);
     final initialIndex = foundIndex < 0 ? 0 : foundIndex.clamp(0, pageItems.length - 1) as int;
@@ -856,10 +657,13 @@ class _WishlistDetailPage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.name, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800)),
+                        Text(item.name,
+                            style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 8),
-                        Text(item.price == null ? 'No price set' : '₹${item.price!.toStringAsFixed(0)}',
-                            style: GoogleFonts.inter(fontSize: 20, color: AndroidTheme.primary, fontWeight: FontWeight.w800)),
+                        Text(
+                          item.price == null ? 'No price set' : '₹${item.price!.toStringAsFixed(0)}',
+                          style: GoogleFonts.inter(fontSize: 20, color: AndroidTheme.primary, fontWeight: FontWeight.w800),
+                        ),
                       ],
                     ),
                   ),
@@ -868,9 +672,15 @@ class _WishlistDetailPage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('Target Date', textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 11, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
+                        Text('Target Date',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.inter(fontSize: 11, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
-                        Text(_formatDate(item.targetPurchaseAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text(
+                          _formatDate(item.targetPurchaseAt),
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700),
+                        ),
                       ],
                     ),
                   ),
@@ -878,11 +688,19 @@ class _WishlistDetailPage extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               if (item.productUrl != null && item.productUrl!.isNotEmpty)
-                OutlinedButton.icon(icon: const Icon(Icons.open_in_new_rounded), label: const Text('Product Link'), onPressed: () => _launch(item.productUrl!)),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Product Link'),
+                  onPressed: () => _launch(item.productUrl!),
+                ),
               const SizedBox(height: 8),
               FilledButton.icon(
-                icon: Icon(item.isPurchased ? Icons.undo_rounded : Icons.check_circle_outline_rounded),
-                label: Text(item.isPurchased ? 'Mark as Not Purchased' : 'Mark as Purchased'),
+                icon: Icon(item.isPurchased
+                    ? Icons.undo_rounded
+                    : Icons.check_circle_outline_rounded),
+                label: Text(item.isPurchased
+                    ? 'Mark as Not Purchased'
+                    : 'Mark as Purchased'),
                 onPressed: () async {
                   final actions = await ref.read(wishlistActionsProvider.future);
                   await actions.togglePurchased(item);
@@ -892,23 +710,42 @@ class _WishlistDetailPage extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 22),
-        Center(
-          child: TextButton.icon(
-            icon: const Icon(Icons.delete_outline_rounded, size: 16),
-            label: const Text('Delete'),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () => _confirmDelete(context, ref, item),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.edit_outlined, size: 16),
+              label: const Text('Edit'),
+              onPressed: () => _showEditForm(context, item),
+            ),
+            const SizedBox(width: 16),
+            TextButton.icon(
+              icon: const Icon(Icons.delete_outline_rounded, size: 16),
+              label: const Text('Delete'),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              onPressed: () => _confirmDelete(context, ref, item),
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  void _showEditForm(BuildContext context, WishlistItem item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _WishlistFormSheet(existing: item),
     );
   }
 
   static String _formatDate(int? ms) {
     if (ms == null) return 'Not set';
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[d.month]} ${d.day}, ${d.year}';
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year}';
   }
 
   Future<void> _launch(String value) async {
@@ -923,13 +760,19 @@ class _WishlistDetailPage extends ConsumerWidget {
         title: const Text('Delete item?'),
         content: Text('Remove "${item.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () async {
-            Navigator.of(dialogContext).pop();
-            final actions = await ref.read(wishlistActionsProvider.future);
-            await actions.deleteItem(item);
-            if (context.mounted) context.pop();
-          }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              final actions = await ref.read(wishlistActionsProvider.future);
+              await actions.deleteItem(item);
+              if (context.mounted) context.pop();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
