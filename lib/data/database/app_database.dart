@@ -83,8 +83,14 @@ final migration5to6 = Migration(5, 6, (database) async {
   await database.execute('ALTER TABLE AssetFolder ADD COLUMN parentId TEXT');
 });
 
+// Migration 6→7: add giftFor and giftDate to WishlistItem
+final migration6to7 = Migration(6, 7, (database) async {
+  await database.execute('ALTER TABLE WishlistItem ADD COLUMN giftFor TEXT');
+  await database.execute('ALTER TABLE WishlistItem ADD COLUMN giftDate INTEGER');
+});
+
 @Database(
-  version: 6,
+  version: 7,
   entities: [Job, WishlistItem, CalendarEvent, Asset, AssetFolder, DayEntry, WeekTodo],
 )
 abstract class AppDatabase extends FloorDatabase {

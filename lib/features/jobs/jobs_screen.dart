@@ -19,18 +19,22 @@ const _kLabels = {
   'interview': 'Interview', 'offer': 'Offer', 'rejected': 'Rejected', 'withdrawn': 'Withdrawn',
 };
 const _kStatusColors = {
-  'wishlist': Color(0xFF9CA3AF), 'applied':   Color(0xFF1EC86A), 'assessment': Color(0xFF3B82F6),
-  'interview': Color(0xFFF59E0B), 'offer':     Color(0xFF10B981),
-  'rejected':  Color(0xFFEF4444), 'withdrawn': Color(0xFF6B7280),
+  'wishlist':   Color(0xFF9CA3AF),
+  'applied':    Color(0xFF1EC86A),
+  'assessment': Color(0xFF3B82F6),
+  'interview':  Color(0xFFF59E0B),
+  'offer':      Color(0xFF10B981),
+  'rejected':   Color(0xFFEF4444),
+  'withdrawn':  Color(0xFF6B7280),
 };
 const _kStatusIcons = {
-  'wishlist': Icons.bookmark_outline_rounded,
-  'applied':   Icons.send_rounded,
+  'wishlist':   Icons.bookmark_outline_rounded,
+  'applied':    Icons.send_rounded,
   'assessment': Icons.assignment_outlined,
-  'interview': Icons.people_outline_rounded,
-  'offer':     Icons.celebration_outlined,
-  'rejected':  Icons.cancel_outlined,
-  'withdrawn': Icons.undo_rounded,
+  'interview':  Icons.people_outline_rounded,
+  'offer':      Icons.celebration_outlined,
+  'rejected':   Icons.cancel_outlined,
+  'withdrawn':  Icons.undo_rounded,
 };
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
@@ -60,17 +64,13 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
 
   void _goToStatus(int index) {
     setState(() => _currentIndex = index);
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
-    );
+    _pageController.animateToPage(index,
+        duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
   @override
   Widget build(BuildContext context) {
     final columns = ref.watch(kanbanColumnsProvider);
-
     return Scaffold(
       backgroundColor: AndroidTheme.surface,
       appBar: AppBar(
@@ -169,7 +169,6 @@ class _StatusPipelineBar extends StatelessWidget {
               final color = _kStatusColors[status]!;
               final isActive = index == currentIndex;
               final isPast = index < currentIndex;
-
               return GestureDetector(
                 onTap: () => onTap(index),
                 child: AnimatedContainer(
@@ -180,15 +179,14 @@ class _StatusPipelineBar extends StatelessWidget {
                     color: isActive || isPast ? color : AndroidTheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isActive || isPast ? color : AndroidTheme.divider,
-                      width: 2,
-                    ),
+                        color: isActive || isPast ? color : AndroidTheme.divider,
+                        width: 2),
                   ),
-                  child: Icon(
-                    _kStatusIcons[status],
-                    size: 14,
-                    color: isActive || isPast ? Colors.white : AndroidTheme.textTertiary,
-                  ),
+                  child: Icon(_kStatusIcons[status],
+                      size: 14,
+                      color: isActive || isPast
+                          ? Colors.white
+                          : AndroidTheme.textTertiary),
                 ),
               ).animate(target: isActive ? 1 : 0).scale(
                     begin: const Offset(1, 1),
@@ -206,7 +204,6 @@ class _StatusPipelineBar extends StatelessWidget {
               final color = _kStatusColors[status]!;
               final isActive = i == currentIndex;
               final count = columns[status]?.length ?? 0;
-
               return GestureDetector(
                 onTap: () => onTap(i),
                 child: AnimatedDefaultTextStyle(
@@ -216,10 +213,8 @@ class _StatusPipelineBar extends StatelessWidget {
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     color: isActive ? color : AndroidTheme.textTertiary,
                   ),
-                  child: Text(
-                    '${_kLabels[status]}\n$count',
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('${_kLabels[status]}\n$count',
+                      textAlign: TextAlign.center),
                 ),
               );
             }),
@@ -237,11 +232,8 @@ class _JobList extends StatelessWidget {
   final List<Job> jobs;
   final void Function(Job) onEdit;
 
-  const _JobList({
-    required this.status,
-    required this.jobs,
-    required this.onEdit,
-  });
+  const _JobList(
+      {required this.status, required this.jobs, required this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -250,22 +242,17 @@ class _JobList extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _kStatusIcons[status],
-              size: 48,
-              color: AndroidTheme.textTertiary.withValues(alpha: 0.4),
-            ),
+            Icon(_kStatusIcons[status],
+                size: 48,
+                color: AndroidTheme.textTertiary.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
-            Text(
-              'No ${_kLabels[status]} jobs',
-              style: GoogleFonts.inter(
-                  color: AndroidTheme.textTertiary, fontSize: 15),
-            ),
+            Text('No ${_kLabels[status]} jobs',
+                style: GoogleFonts.inter(
+                    color: AndroidTheme.textTertiary, fontSize: 15)),
           ],
         ),
       );
     }
-
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: jobs.length,
@@ -298,12 +285,16 @@ class _JobCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(job.title,
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AndroidTheme.textPrimary),
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AndroidTheme.textPrimary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
                   Text(job.company,
-                      style: GoogleFonts.inter(color: AndroidTheme.textSecondary, fontSize: 13),
+                      style: GoogleFonts.inter(
+                          color: AndroidTheme.textSecondary, fontSize: 13),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ],
@@ -313,9 +304,17 @@ class _JobCard extends ConsumerWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('Last modified', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w600)),
+                Text('Last modified',
+                    style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: AndroidTheme.textTertiary,
+                        fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(_formatDate(job.updatedAt), style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textSecondary, fontWeight: FontWeight.w700)),
+                Text(_fmt(job.updatedAt),
+                    style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: AndroidTheme.textSecondary,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
           ],
@@ -324,71 +323,10 @@ class _JobCard extends ConsumerWidget {
     );
   }
 
-  String _formatDate(int ms) {
+  static String _fmt(int? ms) {
+    if (ms == null) return '—';
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    final dd = d.day.toString().padLeft(2, '0');
-    final mm = d.month.toString().padLeft(2, '0');
-    return '$dd/$mm/${d.year}';
-  }
-}
-
-// ── Detail row helper ──────────────────────────────────────────────────────────
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AndroidTheme.surface,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 16, color: AndroidTheme.textSecondary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AndroidTheme.textTertiary,
-                      fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: valueColor ?? AndroidTheme.textPrimary,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 }
 
@@ -408,6 +346,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
   late final TextEditingController _url;
   late String _status;
   String? _resumePath;
+  String? _resumeName;
   DateTime? _appliedAt;
   bool _saving = false;
 
@@ -421,6 +360,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
     _url        = TextEditingController(text: j?.url ?? '');
     _status     = j?.status ?? 'applied';
     _resumePath = j?.resumePath;
+    _resumeName = j?.resumePath?.split('/').last;
     _appliedAt  = j?.appliedAt != null
         ? DateTime.fromMillisecondsSinceEpoch(j!.appliedAt!)
         : null;
@@ -435,11 +375,17 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
     super.dispose();
   }
 
+  // Store only the original file path — no copying
   Future<void> _pickResume() async {
-    const typeGroup = XTypeGroup(
-        label: 'Documents', extensions: ['pdf', 'doc', 'docx']);
+    const typeGroup =
+        XTypeGroup(label: 'Documents', extensions: ['pdf', 'doc', 'docx']);
     final file = await openFile(acceptedTypeGroups: [typeGroup]);
-    if (file != null) setState(() => _resumePath = file.path);
+    if (file != null) {
+      setState(() {
+        _resumePath = file.path; // original device path, no copy
+        _resumeName = file.name;
+      });
+    }
   }
 
   Future<void> _pickAppliedDate() async {
@@ -448,11 +394,10 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
       initialDate: _appliedAt ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme:
-              const ColorScheme.light(primary: AndroidTheme.primary),
-        ),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+            colorScheme:
+                const ColorScheme.light(primary: AndroidTheme.primary)),
         child: child!,
       ),
     );
@@ -487,9 +432,9 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving job: $e'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red));
       }
     }
   }
@@ -497,8 +442,6 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
-    final resumeName = _resumePath?.split('/').last;
-
     return Padding(
       padding: EdgeInsets.fromLTRB(
           20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
@@ -509,22 +452,19 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
           children: [
             Row(
               children: [
-                Text(
-                  isEdit ? 'Edit Job' : 'Add Job',
-                  style: GoogleFonts.inter(
-                      fontSize: 18, fontWeight: FontWeight.w700),
-                ),
+                Text(isEdit ? 'Edit Job' : 'Add Job',
+                    style: GoogleFonts.inter(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 if (isEdit)
                   Text(
-                    'Updated ${_formatTs(widget.existing!.updatedAt)}',
+                    'Updated ${_fmtDate(widget.existing!.updatedAt)}',
                     style: GoogleFonts.inter(
                         fontSize: 11, color: AndroidTheme.textTertiary),
                   ),
               ],
             ),
             const SizedBox(height: 20),
-
             TextField(
               controller: _title,
               decoration: const InputDecoration(labelText: 'Job title *'),
@@ -537,14 +477,11 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
               textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: 16),
-
-            Text(
-              'Status',
-              style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AndroidTheme.textSecondary),
-            ),
+            Text('Status',
+                style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AndroidTheme.textSecondary)),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -565,27 +502,23 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                         border: Border.all(
                             color: selected ? color : AndroidTheme.divider),
                       ),
-                      child: Text(
-                        _kLabels[s]!,
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: selected
-                                ? Colors.white
-                                : AndroidTheme.textSecondary),
-                      ),
+                      child: Text(_kLabels[s]!,
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: selected
+                                  ? Colors.white
+                                  : AndroidTheme.textSecondary)),
                     ),
                   );
                 }).toList(),
               ),
             ),
             const SizedBox(height: 16),
-
             GestureDetector(
               onTap: _pickAppliedDate,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: AndroidTheme.surface,
                   borderRadius: BorderRadius.circular(14),
@@ -598,7 +531,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                     const SizedBox(width: 10),
                     Text(
                       _appliedAt != null
-                          ? 'Applied: ${_appliedAt!.day.toString().padLeft(2, '0')}/${_appliedAt!.month.toString().padLeft(2, '0')}/${_appliedAt!.year}'
+                          ? 'Applied: ${_fmtDate(_appliedAt!.millisecondsSinceEpoch)}'
                           : 'Set applied date',
                       style: GoogleFonts.inter(
                           fontSize: 14,
@@ -618,7 +551,6 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
               ),
             ),
             const SizedBox(height: 12),
-
             TextField(
               controller: _notes,
               decoration: const InputDecoration(
@@ -626,61 +558,58 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
               maxLines: 3,
             ),
             const SizedBox(height: 12),
-
             TextField(
               controller: _url,
               decoration: const InputDecoration(
-                labelText: 'Job URL',
-                prefixIcon: Icon(Icons.link_rounded, size: 18),
-              ),
+                  labelText: 'Job URL',
+                  prefixIcon: Icon(Icons.link_rounded, size: 18)),
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
-
             GestureDetector(
               onTap: _pickResume,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: resumeName != null
+                  color: _resumeName != null
                       ? AndroidTheme.primaryLight
                       : AndroidTheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: resumeName != null
-                        ? AndroidTheme.primary
-                        : AndroidTheme.divider,
-                  ),
+                      color: _resumeName != null
+                          ? AndroidTheme.primary
+                          : AndroidTheme.divider),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.description_outlined,
-                      size: 18,
-                      color: resumeName != null
-                          ? AndroidTheme.primary
-                          : AndroidTheme.textSecondary,
-                    ),
+                    Icon(Icons.description_outlined,
+                        size: 18,
+                        color: _resumeName != null
+                            ? AndroidTheme.primary
+                            : AndroidTheme.textSecondary),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        resumeName ?? 'Attach resume (PDF/DOC)',
+                        _resumeName ?? 'Attach resume (PDF/DOC)',
                         style: GoogleFonts.inter(
                             fontSize: 14,
-                            color: resumeName != null
+                            color: _resumeName != null
                                 ? AndroidTheme.primary
                                 : AndroidTheme.textTertiary,
-                            fontWeight: resumeName != null
+                            fontWeight: _resumeName != null
                                 ? FontWeight.w500
                                 : FontWeight.w400),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (resumeName != null)
+                    if (_resumeName != null)
                       GestureDetector(
                         onTap: () =>
-                            setState(() => _resumePath = null),
+                            setState(() {
+                              _resumePath = null;
+                              _resumeName = null;
+                            }),
                         child: Icon(Icons.close_rounded,
                             size: 16, color: AndroidTheme.primary),
                       ),
@@ -689,7 +618,6 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
               ),
             ),
             const SizedBox(height: 24),
-
             FilledButton(
               onPressed: _saving ? null : _save,
               child: Text(_saving
@@ -704,25 +632,30 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
     );
   }
 
-  String _formatTs(int ms) {
+  static String _fmtDate(int ms) {
     final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    final dd = d.day.toString().padLeft(2, '0');
-    final mm = d.month.toString().padLeft(2, '0');
-    return '$dd/$mm/${d.year}';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 }
 
-// ── Dedicated job details page ────────────────────────────────────────────────
+// ── Job Details Screen ────────────────────────────────────────────────────────
 class JobDetailsScreen extends ConsumerStatefulWidget {
   final String jobId;
   final Job? initialJob;
-  const JobDetailsScreen({super.key, required this.jobId, this.initialJob});
+  const JobDetailsScreen(
+      {super.key, required this.jobId, this.initialJob});
 
   @override
   ConsumerState<JobDetailsScreen> createState() => _JobDetailsScreenState();
 }
 
 class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
+
+  static String _fmt(int? ms) {
+    if (ms == null) return 'Not set';
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
 
   void _showEditForm(BuildContext context, Job job) {
     showModalBottomSheet(
@@ -746,40 +679,51 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
+                // ── Clean header card ──────────────────────────────────────
                 AppCard(
                   padding: const EdgeInsets.all(18),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Left: title + company
                       Expanded(
-                        flex: 4,
+                        flex: 3,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(job.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(fontSize: 23, fontWeight: FontWeight.w800, color: AndroidTheme.textPrimary)),
-                            const SizedBox(height: 6),
-                            Text(job.company, style: GoogleFonts.inter(fontSize: 16, color: AndroidTheme.textSecondary, fontWeight: FontWeight.w600)),
+                            Text(job.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: AndroidTheme.textPrimary)),
+                            const SizedBox(height: 4),
+                            Text(job.company,
+                                style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: AndroidTheme.textSecondary,
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('Applied', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
-                            Text(_formatDate(job.appliedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 8),
-                            Text('Modified', style: GoogleFonts.inter(fontSize: 10, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
-                            Text(_formatDate(job.updatedAt), textAlign: TextAlign.right, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700)),
-                          ],
-                        ),
+                      const SizedBox(width: 16),
+                      // Right: dates — always single line, right-aligned
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        children: [
+                          _DateChip(label: 'Applied', value: _fmt(job.appliedAt)),
+                          const SizedBox(height: 6),
+                          _DateChip(label: 'Modified', value: _fmt(job.updatedAt)),
+                        ],
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                // ── Status + content card ──────────────────────────────────
                 AppCard(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -787,25 +731,56 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
                     children: [
                       _StatusBadge(status: job.status),
                       const SizedBox(height: 16),
-                      _ActionRow(icon: Icons.notes_rounded, label: 'Detail Notes', value: job.notes?.isNotEmpty == true ? job.notes! : 'No detail notes yet'),
+                      _ActionRow(
+                          icon: Icons.notes_rounded,
+                          label: 'Detail Notes',
+                          value: job.notes?.isNotEmpty == true
+                              ? job.notes!
+                              : 'No detail notes yet'),
                       if (job.url != null && job.url!.isNotEmpty)
-                        _ActionRow(icon: Icons.open_in_new_rounded, label: 'Job URL', value: job.url!, onTap: () => _launchExternal(job.url!)),
-                      if (job.resumePath != null && job.resumePath!.isNotEmpty)
-                        _ActionRow(icon: Icons.description_outlined, label: 'Uploaded Resume', value: job.resumePath!.split('/').last, onTap: () => _showResumePreview(context, job.resumePath!)),
+                        _ActionRow(
+                            icon: Icons.open_in_new_rounded,
+                            label: 'Job URL',
+                            value: job.url!,
+                            onTap: () => _launchExternal(job.url!)),
+                      if (job.resumePath != null &&
+                          job.resumePath!.isNotEmpty)
+                        _ActionRow(
+                            icon: Icons.description_outlined,
+                            label: 'Uploaded Resume',
+                            value: job.resumePath!.split('/').last,
+                            onTap: () => _openResume(context, job.resumePath!)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                // ── Action row ────────────────────────────────────────────
                 Row(
                   children: [
-                    Expanded(child: FilledButton.icon(icon: const Icon(Icons.add_comment_outlined, size: 18), label: const Text('Comment'), onPressed: () => _showNoteDialog(context, job))),
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.add_comment_outlined, size: 18),
+                        label: const Text('Comment'),
+                        onPressed: () => _showNoteDialog(context, job),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: OutlinedButton.icon(icon: const Icon(Icons.swap_horiz_rounded, size: 18), label: const Text('Update Status'), onPressed: () => _showStatusDialog(context, job))),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                        label: const Text('Update Status'),
+                        onPressed: () => _showStatusSheet(context, job),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                _TimelineCard(title: 'Comment History', entries: job.noteTimeline),
+                _TimelineCard(
+                    title: 'Comment History', entries: job.noteTimeline),
                 const SizedBox(height: 24),
+
+                // ── Edit + Delete ─────────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -818,7 +793,8 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
                     TextButton.icon(
                       icon: const Icon(Icons.delete_outline_rounded, size: 16),
                       label: const Text('Delete'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      style: TextButton.styleFrom(
+                          foregroundColor: Colors.red),
                       onPressed: () => _confirmDelete(context, job),
                     ),
                   ],
@@ -828,65 +804,75 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
     );
   }
 
-  static String _formatDate(int? ms) {
-    if (ms == null) return 'Not set';
-    final d = DateTime.fromMillisecondsSinceEpoch(ms);
-    final dd = d.day.toString().padLeft(2, '0');
-    final mm = d.month.toString().padLeft(2, '0');
-    return '$dd/$mm/${d.year}';
+  // Modern status selector — bottom sheet with interactive cards
+  void _showStatusSheet(BuildContext context, Job job) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => _StatusSelectorSheet(
+        currentStatus: job.status,
+        onSelected: (selected) async {
+          final actions = await ref.read(jobActionsProvider.future);
+          await actions.changeStatus(
+              job, selected, DateTime.now().millisecondsSinceEpoch);
+          if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+        },
+      ),
+    );
   }
 
   Future<void> _launchExternal(String value) async {
-    final uri = Uri.tryParse(value.startsWith('http') ? value : 'https://$value');
-    if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final uri = Uri.tryParse(
+        value.startsWith('http') ? value : 'https://$value');
+    if (uri != null) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
-  void _showResumePreview(BuildContext context, String path) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ResumeViewerPage(path: path)));
+  void _openResume(BuildContext context, String path) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('File not available or moved'),
+          backgroundColor: Colors.orange));
+      return;
+    }
+    Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => _FileViewerPage(path: path)));
   }
 
   void _showNoteDialog(BuildContext context, Job job) {
     final note = TextEditingController();
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Add Comment'),
-        content: TextField(controller: note, decoration: const InputDecoration(labelText: 'Daily comment'), maxLines: 4, autofocus: true),
+        content: TextField(
+            controller: note,
+            decoration:
+                const InputDecoration(labelText: 'Daily comment'),
+            maxLines: 4,
+            autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-          FilledButton(onPressed: () async {
-            if (note.text.trim().isEmpty) return;
-            final actions = await ref.read(jobActionsProvider.future);
-            await actions.appendNote(job, JobTimelineEntry(date: DateTime.now().millisecondsSinceEpoch, text: note.text.trim()));
-            if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-          }, child: const Text('Save')),
+          TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () async {
+                if (note.text.trim().isEmpty) return;
+                final actions = await ref.read(jobActionsProvider.future);
+                await actions.appendNote(
+                    job,
+                    JobTimelineEntry(
+                        date: DateTime.now().millisecondsSinceEpoch,
+                        text: note.text.trim()));
+                if (dialogCtx.mounted) Navigator.of(dialogCtx).pop();
+              },
+              child: const Text('Save')),
         ],
-      ),
-    );
-  }
-
-  void _showStatusDialog(BuildContext context, Job job) {
-    var selected = job.status;
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Update Status'),
-          content: DropdownButtonFormField<String>(
-            value: selected,
-            decoration: const InputDecoration(labelText: 'Status'),
-            items: _kStatuses.map((s) => DropdownMenuItem(value: s, child: Text(_kLabels[s]!))).toList(),
-            onChanged: (v) => setState(() => selected = v ?? selected),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-            FilledButton(onPressed: () async {
-              final actions = await ref.read(jobActionsProvider.future);
-              await actions.changeStatus(job, selected, DateTime.now().millisecondsSinceEpoch);
-              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-            }, child: const Text('Save')),
-          ],
-        ),
       ),
     );
   }
@@ -894,92 +880,321 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
   void _confirmDelete(BuildContext context, Job job) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('Delete job?'),
-        content: Text('Remove "${job.title}" at ${job.company}?'),
+        content:
+            Text('Remove "${job.title}" at ${job.company}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () async {
-            Navigator.of(dialogContext).pop();
-            final actions = await ref.read(jobActionsProvider.future);
-            await actions.deleteJob(job);
-            if (context.mounted) context.pop();
-          }, child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+              onPressed: () => Navigator.of(dialogCtx).pop(),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () async {
+                Navigator.of(dialogCtx).pop();
+                final actions = await ref.read(jobActionsProvider.future);
+                await actions.deleteJob(job);
+                if (context.mounted) context.pop();
+              },
+              child: const Text('Delete',
+                  style: TextStyle(color: Colors.red))),
         ],
       ),
     );
   }
 }
 
-class _ResumeViewerPage extends StatelessWidget {
-  final String path;
-  const _ResumeViewerPage({required this.path});
+// ── Modern status selector sheet ───────────────────────────────────────────────
+class _StatusSelectorSheet extends StatefulWidget {
+  final String currentStatus;
+  final Future<void> Function(String) onSelected;
+
+  const _StatusSelectorSheet(
+      {required this.currentStatus, required this.onSelected});
+
+  @override
+  State<_StatusSelectorSheet> createState() => _StatusSelectorSheetState();
+}
+
+class _StatusSelectorSheetState extends State<_StatusSelectorSheet> {
+  late String _selected;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.currentStatus;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isPdf = path.toLowerCase().endsWith('.pdf');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: AndroidTheme.divider,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('Update Status',
+              style: GoogleFonts.inter(
+                  fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 20),
+          ...List.generate(_kStatuses.length, (i) {
+            final s = _kStatuses[i];
+            final color = _kStatusColors[s]!;
+            final isSelected = _selected == s;
+            return GestureDetector(
+              onTap: () => setState(() => _selected = s),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.12)
+                      : AndroidTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: isSelected ? color : AndroidTheme.divider,
+                      width: isSelected ? 2 : 1),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                          color: isSelected
+                              ? color
+                              : color.withValues(alpha: 0.12),
+                          shape: BoxShape.circle),
+                      child: Icon(_kStatusIcons[s],
+                          size: 18,
+                          color: isSelected ? Colors.white : color),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(_kLabels[s]!,
+                          style: GoogleFonts.inter(
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              fontSize: 15,
+                              color: isSelected
+                                  ? color
+                                  : AndroidTheme.textPrimary)),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_circle_rounded,
+                          color: color, size: 22),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _saving
+                ? null
+                : () async {
+                    if (_selected == widget.currentStatus) {
+                      Navigator.of(context).pop();
+                      return;
+                    }
+                    setState(() => _saving = true);
+                    await widget.onSelected(_selected);
+                  },
+            child: Text(_saving ? 'Saving…' : 'Confirm Status'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Date chip helper ──────────────────────────────────────────────────────────
+class _DateChip extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DateChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(label,
+            style: GoogleFonts.inter(
+                fontSize: 10,
+                color: AndroidTheme.textTertiary,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AndroidTheme.textPrimary),
+            maxLines: 1),
+      ],
+    );
+  }
+}
+
+// ── File viewer (PDF + image, with missing-file guard) ────────────────────────
+class _FileViewerPage extends StatelessWidget {
+  final String path;
+  const _FileViewerPage({required this.path});
+
+  @override
+  Widget build(BuildContext context) {
+    final lower = path.toLowerCase();
+    final isPdf = lower.endsWith('.pdf');
+    final isImage = lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp');
+
+    Widget body;
+    if (isPdf) {
+      body = SfPdfViewer.file(File(path));
+    } else if (isImage) {
+      body = InteractiveViewer(
+          child: Center(
+              child: Image.file(File(path),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => _unavailable(context))));
+    } else {
+      // Other doc types — hand off to external app
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final uri = Uri.file(path);
+        final ok = await launchUrl(uri,
+            mode: LaunchMode.externalApplication);
+        if (!ok && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Cannot preview this file. Open with another application?')));
+        }
+        if (context.mounted) Navigator.of(context).pop();
+      });
+      body = const Center(child: CircularProgressIndicator());
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text(path.split('/').last)),
-      body: isPdf
-          ? SfPdfViewer.file(File(path))
-          : Center(child: Image.file(File(path), fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Text('Preview unavailable for this file type.'))),
+      body: body,
+    );
+  }
+
+  Widget _unavailable(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.broken_image_outlined,
+              size: 56, color: Colors.grey),
+          const SizedBox(height: 12),
+          Text('File not available or moved',
+              style: GoogleFonts.inter(color: Colors.grey)),
+        ],
+      ),
     );
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
-  @override
-  Widget build(BuildContext context) {
-    final color = _kStatusColors[status] ?? AndroidTheme.textTertiary;
-    return Chip(
-      avatar: Icon(_kStatusIcons[status] ?? Icons.circle, size: 16, color: color),
-      label: Text(_kLabels[status] ?? status),
-      backgroundColor: color.withValues(alpha: 0.12),
-      labelStyle: GoogleFonts.inter(color: color, fontWeight: FontWeight.w700),
-      side: BorderSide.none,
-    );
-  }
-}
-
+// ── Detail row helper ──────────────────────────────────────────────────────────
 class _ActionRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
   final VoidCallback? onTap;
-  const _ActionRow({required this.icon, required this.label, required this.value, this.onTap});
+  const _ActionRow(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.onTap});
+
   @override
   Widget build(BuildContext context) => ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Icon(icon, color: AndroidTheme.primary),
-        title: Text(label, style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textTertiary)),
-        subtitle: Text(value, style: GoogleFonts.inter(fontSize: 14, color: onTap == null ? AndroidTheme.textPrimary : AndroidTheme.primary)),
+        title: Text(label,
+            style: GoogleFonts.inter(
+                fontSize: 12, color: AndroidTheme.textTertiary)),
+        subtitle: Text(value,
+            style: GoogleFonts.inter(
+                fontSize: 14,
+                color: onTap == null
+                    ? AndroidTheme.textPrimary
+                    : AndroidTheme.primary)),
         onTap: onTap,
       );
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _kStatusColors[status] ?? AndroidTheme.textTertiary;
+    return Chip(
+      avatar:
+          Icon(_kStatusIcons[status] ?? Icons.circle, size: 16, color: color),
+      label: Text(_kLabels[status] ?? status),
+      backgroundColor: color.withValues(alpha: 0.12),
+      labelStyle:
+          GoogleFonts.inter(color: color, fontWeight: FontWeight.w700),
+      side: BorderSide.none,
+    );
+  }
 }
 
 class _TimelineCard extends StatelessWidget {
   final String title;
   final List<JobTimelineEntry> entries;
   const _TimelineCard({required this.title, required this.entries});
+
   @override
   Widget build(BuildContext context) => AppCard(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(title,
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 12),
             if (entries.isEmpty)
-              Text('No history yet', style: GoogleFonts.inter(color: AndroidTheme.textTertiary))
+              Text('No history yet',
+                  style:
+                      GoogleFonts.inter(color: AndroidTheme.textTertiary))
             else
               ...entries.map((e) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_JobDetailsScreenState._formatDate(e.date), style: GoogleFonts.inter(fontSize: 12, color: AndroidTheme.textTertiary, fontWeight: FontWeight.w700)),
-                      const SizedBox(width: 12),
-                      Expanded(child: Text(e.text, style: GoogleFonts.inter(fontSize: 14, color: AndroidTheme.textPrimary))),
-                    ]),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_JobDetailsScreenState._fmt(e.date),
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AndroidTheme.textTertiary,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Text(e.text,
+                                  style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: AndroidTheme.textPrimary))),
+                        ]),
                   )),
           ],
         ),

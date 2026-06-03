@@ -92,7 +92,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 6,
+      version: 7,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -110,7 +110,7 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `Job` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `company` TEXT NOT NULL, `status` TEXT NOT NULL, `notes` TEXT, `url` TEXT, `resumePath` TEXT, `appliedAt` INTEGER, `noteHistory` TEXT, `statusHistory` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `targetPurchaseAt` INTEGER, `isPurchased` INTEGER NOT NULL, `purchasedAt` INTEGER, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `targetPurchaseAt` INTEGER, `isPurchased` INTEGER NOT NULL, `purchasedAt` INTEGER, `createdAt` INTEGER NOT NULL, `giftFor` TEXT, `giftDate` INTEGER, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `itemType` TEXT, `contactInfo` TEXT, `attachmentPath` TEXT, `isDone` INTEGER NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
@@ -327,7 +327,9 @@ class _$WishlistDao extends WishlistDao {
                   'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
                   'purchasedAt': item.purchasedAt,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'giftFor': item.giftFor,
+                  'giftDate': item.giftDate
                 }),
         _wishlistItemUpdateAdapter = UpdateAdapter(
             database,
@@ -343,7 +345,9 @@ class _$WishlistDao extends WishlistDao {
                   'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
                   'purchasedAt': item.purchasedAt,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'giftFor': item.giftFor,
+                  'giftDate': item.giftDate
                 }),
         _wishlistItemDeletionAdapter = DeletionAdapter(
             database,
@@ -359,7 +363,9 @@ class _$WishlistDao extends WishlistDao {
                   'targetPurchaseAt': item.targetPurchaseAt,
                   'isPurchased': item.isPurchased ? 1 : 0,
                   'purchasedAt': item.purchasedAt,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'giftFor': item.giftFor,
+                  'giftDate': item.giftDate
                 });
 
   final sqflite.DatabaseExecutor database;
@@ -388,7 +394,9 @@ class _$WishlistDao extends WishlistDao {
             targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
             purchasedAt: row['purchasedAt'] as int?,
-            createdAt: row['createdAt'] as int));
+            createdAt: row['createdAt'] as int,
+            giftFor: row['giftFor'] as String?,
+            giftDate: row['giftDate'] as int?));
   }
 
   @override
@@ -405,7 +413,9 @@ class _$WishlistDao extends WishlistDao {
             targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
             purchasedAt: row['purchasedAt'] as int?,
-            createdAt: row['createdAt'] as int),
+            createdAt: row['createdAt'] as int,
+            giftFor: row['giftFor'] as String?,
+            giftDate: row['giftDate'] as int?),
         arguments: [purchased ? 1 : 0]);
   }
 
@@ -422,7 +432,9 @@ class _$WishlistDao extends WishlistDao {
             targetPurchaseAt: row['targetPurchaseAt'] as int?,
             isPurchased: (row['isPurchased'] as int) != 0,
             purchasedAt: row['purchasedAt'] as int?,
-            createdAt: row['createdAt'] as int),
+            createdAt: row['createdAt'] as int,
+            giftFor: row['giftFor'] as String?,
+            giftDate: row['giftDate'] as int?),
         arguments: [id]);
   }
 
