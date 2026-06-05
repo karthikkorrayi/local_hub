@@ -12,7 +12,10 @@ import '../../data/models/wishlist_item.dart';
 import '../wishlist/wishlist_provider.dart';
 import 'calendar_provider.dart';
 
-const _eventCategories = ['travel', 'movie', 'occasion'];
+// ── Module color shortcuts ────────────────────────────────────────────────────
+const _mc  = AndroidTheme.calendarPrimary;
+const _mcl = AndroidTheme.calendarPrimaryLight;
+
 const _categoryLabels = {
   'travel':   'Travel',
   'movie':    'Movie',
@@ -27,12 +30,13 @@ const _categoryColors = {
   'birthday': Color(0xFFFFF7ED),
   'task':     Color(0xFFDCFCE7),
 };
-const _categoryIconData = {
+const _categoryIcons = {
   'travel':   Icons.flight_rounded,
   'movie':    Icons.movie_outlined,
   'occasion': Icons.celebration_outlined,
   'birthday': Icons.cake_outlined,
   'task':     Icons.task_alt_rounded,
+  'diary':    Icons.book_outlined,
 };
 const _moods = ['😀', '🥰', '😌', '😔', '😴', '🤔'];
 
@@ -70,7 +74,7 @@ class CalendarScreen extends ConsumerWidget {
   }
 }
 
-// ── Calendar card ──────────────────────────────────────────────────────────────
+// ── Calendar widget card ───────────────────────────────────────────────────────
 class _CalendarCard extends ConsumerWidget {
   const _CalendarCard();
 
@@ -87,13 +91,18 @@ class _CalendarCard extends ConsumerWidget {
         Row(children: [
           TextButton.icon(
             onPressed: () => _pickMonth(context, ref, focused),
-            icon: const Icon(Icons.expand_more_rounded),
+            icon: const Icon(Icons.expand_more_rounded, color: _mc),
             label: Text(_monthTitle(focused),
                 style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800, fontSize: 18)),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: AndroidTheme.textPrimary)),
           ),
           const Spacer(),
           OutlinedButton(
+            style: OutlinedButton.styleFrom(
+                foregroundColor: _mc,
+                side: const BorderSide(color: _mc)),
             onPressed: () {
               final now = DateTime.now();
               ref.read(selectedDayProvider.notifier).state = now;
@@ -143,7 +152,6 @@ class _CalendarCard extends ConsumerWidget {
     );
   }
 
-  // FIX: use dialogCtx — not outer context — to avoid blank screen
   Future<void> _pickMonth(
       BuildContext context, WidgetRef ref, DateTime focused) async {
     final year = await showDialog<int>(
@@ -215,19 +223,24 @@ class _DayCell extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         color: isSelected
-            ? AndroidTheme.primary.withValues(alpha: .14)
+            ? _mc.withValues(alpha: .14)
             : isToday
-                ? AndroidTheme.primary.withValues(alpha: .07)
+                ? _mc.withValues(alpha: .07)
                 : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        border: isSelected ? Border.all(color: AndroidTheme.primary) : null,
+        border: isSelected ? Border.all(color: _mc) : null,
       ),
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Text('${day.day}',
             style: GoogleFonts.inter(
-                fontWeight: FontWeight.w700, fontSize: 13)),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: isSelected
+                    ? _mc
+                    : isToday
+                        ? _mc
+                        : AndroidTheme.textPrimary)),
         const SizedBox(height: 2),
-        // Only show mood emoji here (diary) — no category emojis on calendar dates
         if (entry?.mood != null)
           Text(entry!.mood!, style: const TextStyle(fontSize: 14))
         else
@@ -239,8 +252,7 @@ class _DayCell extends StatelessWidget {
               .map((e) => Container(
                     width: 5,
                     height: 5,
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 1.5),
+                    margin: const EdgeInsets.symmetric(horizontal: 1.5),
                     decoration: BoxDecoration(
                         color: _dotColor(e), shape: BoxShape.circle),
                   ))
@@ -254,7 +266,7 @@ class _DayCell extends StatelessWidget {
       ? Colors.green
       : e.itemType == 'birthday'
           ? Colors.orange
-          : Colors.blue;
+          : _mc;
 }
 
 // ── Selected day panel ─────────────────────────────────────────────────────────
@@ -277,7 +289,7 @@ class _SelectedDayPanel extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date + contextual add button
+          // Date row + add button
           Row(
             children: [
               Expanded(
@@ -289,14 +301,14 @@ class _SelectedDayPanel extends ConsumerWidget {
               ),
               if (!isPast)
                 GestureDetector(
-                  onTap: () => _showAddMenu(context, ref, day,
+                  onTap: () => _showAddMenu(
+                      context, ref, day,
                       isToday: isToday),
                   child: Container(
                     width: 34,
                     height: 34,
                     decoration: const BoxDecoration(
-                        color: AndroidTheme.primary,
-                        shape: BoxShape.circle),
+                        color: _mc, shape: BoxShape.circle),
                     child: const Icon(Icons.add_rounded,
                         size: 20, color: Colors.white),
                   ),
@@ -305,18 +317,20 @@ class _SelectedDayPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
 
-          // Diary — editable today, read-only past
-          if (isToday) _DiaryEditor(entry: entry),
-          if (isPast && entry != null) _DiaryPreview(entry: entry),
-          if (isToday || isPast) const SizedBox(height: 12),
+          // Past diary — read-only
+          if (isPast && entry != null) ...[
+            _DiaryPreview(entry: entry),
+            const SizedBox(height: 12),
+          ],
 
-          // Events/tasks for the day
+          // Events for the day
           _DayEventList(events: events, readOnly: isPast),
         ],
       ),
     );
   }
 
+  /// Add menu — diary is now a proper bottom sheet, consistent with Task/Event/Birthday
   void _showAddMenu(
     BuildContext context,
     WidgetRef ref,
@@ -326,99 +340,196 @@ class _SelectedDayPanel extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: AndroidTheme.divider,
-                      borderRadius: BorderRadius.circular(2)),
-                ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (sheetCtx) => _AddMenuSheet(
+        day: day,
+        isToday: isToday,
+        onClose: () => Navigator.pop(sheetCtx),
+        ref: ref,
+      ),
+    );
+  }
+}
+
+// ── Add menu bottom sheet ──────────────────────────────────────────────────────
+class _AddMenuSheet extends StatelessWidget {
+  final DateTime day;
+  final bool isToday;
+  final VoidCallback onClose;
+  final WidgetRef ref;
+
+  const _AddMenuSheet({
+    required this.day,
+    required this.isToday,
+    required this.onClose,
+    required this.ref,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: AndroidTheme.divider,
+                    borderRadius: BorderRadius.circular(2)),
               ),
-              const SizedBox(height: 12),
-              Text('Add to ${_fullDate(day)}',
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text('Add New',
                   style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w700, fontSize: 16)),
-              const SizedBox(height: 8),
-              if (isToday)
-                ListTile(
-                  leading: const Icon(Icons.book_outlined,
-                      color: AndroidTheme.primary),
-                  title: Text('Diary Note',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Diary is shown above ↑'),
-                          duration: Duration(seconds: 2)),
-                    );
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.task_alt_rounded,
-                    color: AndroidTheme.primary),
-                title: Text('Add Task',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                      fontSize: 17, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 8),
+
+            if (isToday)
+              _MenuTile(
+                icon: Icons.book_outlined,
+                color: const Color(0xFF8B5CF6),
+                label: 'Diary Note',
+                subtitle: 'Write about today',
                 onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _showTaskDialog(context, ref, day);
+                  onClose();
+                  _showDiarySheet(context, ref);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.event_outlined,
-                    color: AndroidTheme.primary),
-                title: Text('Add Event',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _showEventSheet(context, ref, day);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.cake_outlined,
-                    color: AndroidTheme.primary),
-                title: Text('Add Birthday',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                onTap: () {
-                  Navigator.pop(sheetCtx);
-                  _showBirthdaySheet(context, ref, day);
-                },
-              ),
-            ],
-          ),
+            _MenuTile(
+              icon: Icons.task_alt_rounded,
+              color: Colors.green.shade600,
+              label: 'Task',
+              subtitle: 'Add a to-do for this day',
+              onTap: () {
+                onClose();
+                _showTaskDialog(context, ref, day);
+              },
+            ),
+            _MenuTile(
+              icon: Icons.event_outlined,
+              color: _mc,
+              label: 'Event',
+              subtitle: 'Travel, movie, occasion',
+              onTap: () {
+                onClose();
+                _showEventSheet(context, ref, day);
+              },
+            ),
+            _MenuTile(
+              icon: Icons.cake_outlined,
+              color: Colors.orange.shade600,
+              label: 'Birthday',
+              subtitle: 'Add birthday & gift idea',
+              onTap: () {
+                onClose();
+                _showBirthdaySheet(context, ref, day);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );
   }
 }
 
-// ── Diary editor (today only) ──────────────────────────────────────────────────
-class _DiaryEditor extends ConsumerStatefulWidget {
-  final DayEntry? entry;
-  const _DiaryEditor({this.entry});
+class _MenuTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _MenuTile({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.subtitle,
+    required this.onTap,
+  });
 
   @override
-  ConsumerState<_DiaryEditor> createState() => _DiaryEditorState();
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14)),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(subtitle,
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AndroidTheme.textTertiary)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: AndroidTheme.textTertiary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _DiaryEditorState extends ConsumerState<_DiaryEditor> {
+// ── Diary bottom sheet (same pattern as Task/Event/Birthday) ──────────────────
+void _showDiarySheet(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (_) => _DiarySheet(ref: ref),
+  );
+}
+
+class _DiarySheet extends ConsumerStatefulWidget {
+  // Pass the outer ref so we can read today's existing entry
+  final WidgetRef outerRef;
+  const _DiarySheet({required WidgetRef ref}) : outerRef = ref;
+
+  @override
+  ConsumerState<_DiarySheet> createState() => _DiarySheetState();
+}
+
+class _DiarySheetState extends ConsumerState<_DiarySheet> {
   late String _mood;
   late TextEditingController _diary;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _mood  = widget.entry?.mood ?? _moods.first;
-    _diary = TextEditingController(text: widget.entry?.diary ?? '');
+    final existing = widget.outerRef.read(dayEntryProvider).valueOrNull;
+    _mood  = existing?.mood ?? _moods.first;
+    _diary = TextEditingController(text: existing?.diary ?? '');
   }
 
   @override
@@ -427,61 +538,122 @@ class _DiaryEditorState extends ConsumerState<_DiaryEditor> {
     super.dispose();
   }
 
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final day     = ref.read(selectedDayProvider);
+      final existing = ref.read(dayEntryProvider).valueOrNull;
+      final actions = await ref.read(calendarActionsProvider.future);
+      await actions.saveDayEntry(DayEntry(
+        id:    existing?.id ?? const Uuid().v4(),
+        date:  dateKey(day),
+        mood:  _mood,
+        diary: _diary.text.trim().isEmpty ? null : _diary.text.trim(),
+      ));
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Unable to save diary: $e'),
+            backgroundColor: Colors.red));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Today\'s Diary',
-            style: GoogleFonts.inter(
-                fontWeight: FontWeight.w700, fontSize: 14)),
-        const SizedBox(height: 8),
-        // Mood row — emoji chips are intentional here (diary mood)
-        Wrap(
-          spacing: 6,
-          children: _moods
-              .map((m) => ChoiceChip(
-                    label: Text(m),
-                    selected: _mood == m,
-                    onSelected: (_) => setState(() => _mood = m),
-                  ))
-              .toList(),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Diary Note',
+                style: GoogleFonts.inter(
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(_fullDate(dayOnly(DateTime.now())),
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: AndroidTheme.textTertiary)),
+            const SizedBox(height: 20),
+            Text('How are you feeling?',
+                style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AndroidTheme.textSecondary)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _moods
+                  .map((m) => GestureDetector(
+                        onTap: () => setState(() => _mood = m),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: _mood == m
+                                ? _mc.withValues(alpha: 0.15)
+                                : AndroidTheme.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: _mood == m ? _mc : AndroidTheme.divider,
+                              width: _mood == m ? 2 : 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(m,
+                                style: const TextStyle(fontSize: 24)),
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _diary,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                  labelText: 'Write about your day...',
+                  alignLabelWithHint: true),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                        foregroundColor: AndroidTheme.textSecondary,
+                        side: const BorderSide(
+                            color: AndroidTheme.divider)),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: _mc),
+                    onPressed: _saving ? null : _save,
+                    child: Text(_saving ? 'Saving…' : 'Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _diary,
-          maxLines: 2,
-          decoration:
-              const InputDecoration(labelText: 'Short diary note'),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.icon(
-            icon: const Icon(Icons.save_outlined, size: 16),
-            label: const Text('Save'),
-            onPressed: () async {
-              final day     = ref.read(selectedDayProvider);
-              final actions =
-                  await ref.read(calendarActionsProvider.future);
-              await actions.saveDayEntry(DayEntry(
-                id:    widget.entry?.id ?? const Uuid().v4(),
-                date:  dateKey(day),
-                mood:  _mood,
-                diary: _diary.text.trim().isEmpty
-                    ? null
-                    : _diary.text.trim(),
-              ));
-            },
-          ),
-        ),
-        const Divider(height: 24),
-      ],
+      ),
     );
   }
 }
 
-// ── Diary preview (past) ───────────────────────────────────────────────────────
+// ── Diary preview (past dates, read-only) ─────────────────────────────────────
 class _DiaryPreview extends StatelessWidget {
   final DayEntry entry;
   const _DiaryPreview({required this.entry});
@@ -491,23 +663,31 @@ class _DiaryPreview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Diary',
-            style: GoogleFonts.inter(
-                fontWeight: FontWeight.w700, fontSize: 14)),
+        Row(children: [
+          const Icon(Icons.book_outlined,
+              size: 14, color: AndroidTheme.textSecondary),
+          const SizedBox(width: 4),
+          Text('Diary',
+              style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700, fontSize: 13)),
+        ]),
         const SizedBox(height: 6),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AndroidTheme.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
+              color: AndroidTheme.surface,
+              borderRadius: BorderRadius.circular(12)),
           child: Text(
-            '${entry.mood ?? ''} ${entry.diary ?? 'No diary note'.trim()}',
+            '${entry.mood ?? ''} ${(entry.diary ?? 'No diary note').trim()}',
             style: GoogleFonts.inter(fontSize: 14),
           ),
         ),
-        const Divider(height: 24),
+        const SizedBox(height: 4),
+        Text('Read-only — past date',
+            style: GoogleFonts.inter(
+                fontSize: 11, color: AndroidTheme.textTertiary)),
+        const Divider(height: 20),
       ],
     );
   }
@@ -517,7 +697,8 @@ class _DiaryPreview extends StatelessWidget {
 class _DayEventList extends ConsumerWidget {
   final List<CalendarEvent> events;
   final bool readOnly;
-  const _DayEventList({required this.events, this.readOnly = false});
+  const _DayEventList(
+      {required this.events, this.readOnly = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -545,11 +726,12 @@ class _EventTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final type  = event.itemType ?? event.category;
     final color = _categoryColors[type] ?? AndroidTheme.surface;
-    final icon  = _categoryIconData[type] ?? Icons.event_outlined;
+    final icon  = _categoryIcons[type] ?? Icons.event_outlined;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
           color: color, borderRadius: BorderRadius.circular(12)),
       child: Row(
@@ -557,6 +739,7 @@ class _EventTile extends ConsumerWidget {
           if (event.itemType == 'task')
             Checkbox(
               value: event.isDone,
+              activeColor: _mc,
               onChanged: readOnly
                   ? null
                   : (_) async {
@@ -568,8 +751,9 @@ class _EventTile extends ConsumerWidget {
             )
           else
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Icon(icon, size: 18, color: AndroidTheme.textSecondary),
+              padding: const EdgeInsets.only(right: 10),
+              child: Icon(icon,
+                  size: 18, color: AndroidTheme.textSecondary),
             ),
           Expanded(
             child: Column(
@@ -623,8 +807,24 @@ class _FilterBar extends ConsumerWidget {
           child: ChoiceChip(
             label: Text(f.$1),
             selected: isSelected,
-            onSelected: (_) =>
-                ref.read(calendarViewProvider.notifier).state = f.$2,
+            selectedColor: _mcl,
+            checkmarkColor: _mc,
+            side: BorderSide(
+                color: isSelected ? _mc : AndroidTheme.divider),
+            labelStyle: GoogleFonts.inter(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? _mc : AndroidTheme.textSecondary,
+            ),
+            onSelected: (_) {
+              ref.read(calendarViewProvider.notifier).state = f.$2;
+              // TODAY filter: also jump calendar + selected date to today
+              if (f.$2 == 'day') {
+                final now = DateTime.now();
+                ref.read(selectedDayProvider.notifier).state = now;
+                ref.read(focusedMonthProvider.notifier).state =
+                    DateTime(now.year, now.month);
+              }
+            },
           ),
         );
       }).toList(),
@@ -646,15 +846,12 @@ class _ActivitySection extends ConsumerWidget {
             : ref.watch(dayEventsProvider).valueOrNull ?? [];
 
     final tasks     = events.where((e) => e.itemType == 'task').toList();
-    final eventsAll = events
-        .where((e) => e.itemType == 'event')
-        .toList();
+    final evts      = events.where((e) => e.itemType == 'event').toList();
     final birthdays = events.where((e) => e.itemType == 'birthday').toList();
 
-    final hasContent =
-        tasks.isNotEmpty || eventsAll.isNotEmpty || birthdays.isNotEmpty;
-
-    if (!hasContent) return const SizedBox.shrink();
+    if (tasks.isEmpty && evts.isEmpty && birthdays.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -662,20 +859,27 @@ class _ActivitySection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (tasks.isNotEmpty) ...[
-            _SectionHeader(icon: Icons.task_alt_rounded, label: 'Tasks'),
+            _SectionHeader(
+                icon: Icons.task_alt_rounded,
+                color: Colors.green.shade600,
+                label: 'Tasks'),
             const SizedBox(height: 8),
             ...tasks.map((e) => _EventTile(event: e)),
-            if (eventsAll.isNotEmpty || birthdays.isNotEmpty)
+            if (evts.isNotEmpty || birthdays.isNotEmpty)
               const SizedBox(height: 14),
           ],
-          if (eventsAll.isNotEmpty) ...[
-            _SectionHeader(icon: Icons.event_outlined, label: 'Events'),
+          if (evts.isNotEmpty) ...[
+            _SectionHeader(
+                icon: Icons.event_outlined, color: _mc, label: 'Events'),
             const SizedBox(height: 8),
-            ...eventsAll.map((e) => _EventTile(event: e)),
+            ...evts.map((e) => _EventTile(event: e)),
             if (birthdays.isNotEmpty) const SizedBox(height: 14),
           ],
           if (birthdays.isNotEmpty) ...[
-            _SectionHeader(icon: Icons.cake_outlined, label: 'Birthdays'),
+            _SectionHeader(
+                icon: Icons.cake_outlined,
+                color: Colors.orange.shade600,
+                label: 'Birthdays'),
             const SizedBox(height: 8),
             ...birthdays.map((e) => _EventTile(event: e)),
           ],
@@ -687,20 +891,20 @@ class _ActivitySection extends ConsumerWidget {
 
 class _SectionHeader extends StatelessWidget {
   final IconData icon;
+  final Color color;
   final String label;
-  const _SectionHeader({required this.icon, required this.label});
+  const _SectionHeader(
+      {required this.icon, required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AndroidTheme.primary),
-        const SizedBox(width: 6),
-        Text(label,
-            style: GoogleFonts.inter(
-                fontWeight: FontWeight.w800, fontSize: 14)),
-      ],
-    );
+    return Row(children: [
+      Icon(icon, size: 15, color: color),
+      const SizedBox(width: 6),
+      Text(label,
+          style: GoogleFonts.inter(
+              fontWeight: FontWeight.w800, fontSize: 14)),
+    ]);
   }
 }
 
@@ -717,12 +921,13 @@ void _showTaskDialog(BuildContext context, WidgetRef ref, DateTime day) {
         children: [
           TextField(
               controller: title,
-              decoration:
-                  const InputDecoration(labelText: 'Task title')),
+              decoration: const InputDecoration(labelText: 'Task title'),
+              autofocus: true),
+          const SizedBox(height: 10),
           TextField(
               controller: desc,
-              decoration:
-                  const InputDecoration(labelText: 'Description (optional)')),
+              decoration: const InputDecoration(
+                  labelText: 'Description (optional)')),
         ],
       ),
       actions: [
@@ -730,22 +935,31 @@ void _showTaskDialog(BuildContext context, WidgetRef ref, DateTime day) {
             onPressed: () => Navigator.pop(dialogCtx),
             child: const Text('Cancel')),
         FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _mc),
             onPressed: () async {
               if (title.text.trim().isEmpty) return;
-              final a = await ref.read(calendarActionsProvider.future);
-              await a.addEvent(CalendarEvent(
-                id:          const Uuid().v4(),
-                title:       title.text.trim(),
-                description: desc.text.trim().isEmpty
-                    ? null
-                    : desc.text.trim(),
-                date:        dateKey(day),
-                category:    'task',
-                itemType:    'task',
-                isDone:      false,
-                createdAt:   DateTime.now().millisecondsSinceEpoch,
-              ));
-              if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+              try {
+                final a = await ref.read(calendarActionsProvider.future);
+                await a.addEvent(CalendarEvent(
+                  id:          const Uuid().v4(),
+                  title:       title.text.trim(),
+                  description: desc.text.trim().isEmpty
+                      ? null
+                      : desc.text.trim(),
+                  date:        dateKey(day),
+                  category:    'task',
+                  itemType:    'task',
+                  isDone:      false,
+                  createdAt:   DateTime.now().millisecondsSinceEpoch,
+                ));
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+              } catch (e) {
+                if (dialogCtx.mounted) {
+                  ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
+                      content: Text('Unable to save task: $e'),
+                      backgroundColor: Colors.red));
+                }
+              }
             },
             child: const Text('Add Task')),
       ],
@@ -793,7 +1007,6 @@ class _EventFormState extends ConsumerState<_EventForm> {
     const g = XTypeGroup(label: 'Documents',
         extensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx']);
     final f = await openFile(acceptedTypeGroups: [g]);
-    // Store only original path — no copy
     if (f != null) setState(() => _ticket = f.path);
   }
 
@@ -824,20 +1037,18 @@ class _EventFormState extends ConsumerState<_EventForm> {
                 style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            TextField(
-                controller: _title,
+            TextField(controller: _title,
                 decoration:
                     const InputDecoration(labelText: 'Event Title')),
             const SizedBox(height: 12),
             DropdownButtonFormField(
               value: _cat,
-              items: _eventCategories
+              items: const ['travel', 'movie', 'occasion']
                   .map((c) => DropdownMenuItem(
                       value: c, child: Text(_categoryLabels[c]!)))
                   .toList(),
               onChanged: (v) => setState(() => _cat = v ?? _cat),
-              decoration:
-                  const InputDecoration(labelText: 'Select Category'),
+              decoration: const InputDecoration(labelText: 'Category'),
             ),
             const SizedBox(height: 12),
             if (_cat == 'travel') ...[
@@ -847,16 +1058,18 @@ class _EventFormState extends ConsumerState<_EventForm> {
                     ? 'Departure Date & Time'
                     : _fullDateTime(_depart!)),
               ),
+              const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => _pickDateTime((d) => _arrive = d),
                 child: Text(_arrive == null
                     ? 'Arrival Date & Time'
                     : _fullDateTime(_arrive!)),
               ),
-              TextField(
-                  controller: _notes,
+              const SizedBox(height: 8),
+              TextField(controller: _notes,
                   decoration:
                       const InputDecoration(labelText: 'Details / Notes')),
+              const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _pickTicket,
                 icon: const Icon(Icons.attach_file),
@@ -865,22 +1078,22 @@ class _EventFormState extends ConsumerState<_EventForm> {
               ),
             ],
             if (_cat == 'movie') ...[
-              TextField(
-                  controller: _movie,
+              TextField(controller: _movie,
                   decoration:
                       const InputDecoration(labelText: 'Movie Name')),
+              const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => _pickDateTime((d) => _start = d),
                 child: Text(_start == null
                     ? 'Start Time'
                     : _fullDateTime(_start!)),
               ),
-              TextField(
-                  controller: _seats,
+              const SizedBox(height: 8),
+              TextField(controller: _seats,
                   decoration:
                       const InputDecoration(labelText: 'Seat Numbers')),
-              TextField(
-                  controller: _screen,
+              const SizedBox(height: 8),
+              TextField(controller: _screen,
                   decoration: const InputDecoration(
                       labelText: 'Screen Number (optional)')),
             ],
@@ -891,38 +1104,45 @@ class _EventFormState extends ConsumerState<_EventForm> {
                     const InputDecoration(labelText: 'Number of Days'),
                 keyboardType: TextInputType.number,
               ),
-              TextField(
-                  controller: _notes,
+              const SizedBox(height: 8),
+              TextField(controller: _notes,
                   decoration: const InputDecoration(
                       labelText: 'Address / Notes (optional)')),
             ],
             const SizedBox(height: 18),
             FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _mc),
               onPressed: () async {
                 if (_title.text.trim().isEmpty) return;
-                final details = [
-                  if (_cat == 'travel') _notes.text.trim(),
-                  if (_cat == 'movie')
-                    '${_movie.text.trim()} ${_seats.text.trim()} ${_screen.text.trim()}'
-                        .trim(),
-                  if (_cat == 'occasion')
-                    '${_days.text.trim()} days ${_notes.text.trim()}'.trim(),
-                ].where((e) => e.isNotEmpty).join('\n');
-
-                final a = await ref.read(calendarActionsProvider.future);
-                await a.addEvent(CalendarEvent(
-                  id:          const Uuid().v4(),
-                  title:       _title.text.trim(),
-                  description: details.isEmpty ? null : details,
-                  date:        dateKey(widget.day),
-                  startTime:   (_depart ?? _start)?.toIso8601String(),
-                  endTime:     _arrive?.toIso8601String(),
-                  category:    _cat,
-                  itemType:    'event',
-                  attachmentPath: _ticket,
-                  createdAt:   DateTime.now().millisecondsSinceEpoch,
-                ));
-                if (mounted) Navigator.pop(context);
+                try {
+                  final details = [
+                    if (_cat == 'travel') _notes.text.trim(),
+                    if (_cat == 'movie')
+                      '${_movie.text.trim()} ${_seats.text.trim()} ${_screen.text.trim()}'.trim(),
+                    if (_cat == 'occasion')
+                      '${_days.text.trim()} days ${_notes.text.trim()}'.trim(),
+                  ].where((e) => e.isNotEmpty).join('\n');
+                  final a = await ref.read(calendarActionsProvider.future);
+                  await a.addEvent(CalendarEvent(
+                    id:          const Uuid().v4(),
+                    title:       _title.text.trim(),
+                    description: details.isEmpty ? null : details,
+                    date:        dateKey(widget.day),
+                    startTime:   (_depart ?? _start)?.toIso8601String(),
+                    endTime:     _arrive?.toIso8601String(),
+                    category:    _cat,
+                    itemType:    'event',
+                    attachmentPath: _ticket,
+                    createdAt:   DateTime.now().millisecondsSinceEpoch,
+                  ));
+                  if (mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Unable to save event: $e'),
+                        backgroundColor: Colors.red));
+                  }
+                }
               },
               child: const Text('Add Event'),
             ),
@@ -972,7 +1192,6 @@ class _BirthdayFormState extends ConsumerState<_BirthdayForm> {
     const g = XTypeGroup(label: 'Images',
         extensions: ['jpg', 'jpeg', 'png', 'webp']);
     final f = await openFile(acceptedTypeGroups: [g]);
-    // Store only original path — no copy
     if (f != null) setState(() => _image = f.path);
   }
 
@@ -990,13 +1209,15 @@ class _BirthdayFormState extends ConsumerState<_BirthdayForm> {
                 style: GoogleFonts.inter(
                     fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            TextField(
-                controller: _person,
+            TextField(controller: _person,
                 decoration:
                     const InputDecoration(labelText: 'Person Name')),
+            const SizedBox(height: 8),
             SwitchListTile(
               value: _idea,
               onChanged: (v) => setState(() => _idea = v),
+              activeColor: _mc,
+              contentPadding: EdgeInsets.zero,
               title: Text('Add Gift Idea',
                   style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
             ),
@@ -1004,22 +1225,23 @@ class _BirthdayFormState extends ConsumerState<_BirthdayForm> {
               OutlinedButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.image_outlined),
-                label: Text(
-                    _image?.split('/').last ?? 'Add Gift Image'),
+                label: Text(_image?.split('/').last ?? 'Add Gift Image'),
               ),
-              TextField(
-                  controller: _gift,
+              const SizedBox(height: 8),
+              TextField(controller: _gift,
                   decoration:
                       const InputDecoration(labelText: 'Gift Name')),
+              const SizedBox(height: 8),
               TextField(
                 controller: _price,
                 decoration: const InputDecoration(labelText: 'Price'),
                 keyboardType: TextInputType.number,
               ),
-              TextField(
-                  controller: _cat,
+              const SizedBox(height: 8),
+              TextField(controller: _cat,
                   decoration:
                       const InputDecoration(labelText: 'Category')),
+              const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () async {
                   final d = await showDatePicker(
@@ -1033,48 +1255,56 @@ class _BirthdayFormState extends ConsumerState<_BirthdayForm> {
                     ? 'Target Purchase Date'
                     : _fullDate(_target!)),
               ),
-              TextField(
-                  controller: _url,
+              const SizedBox(height: 8),
+              TextField(controller: _url,
                   decoration:
                       const InputDecoration(labelText: 'Product URL')),
             ],
             const SizedBox(height: 16),
             FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _mc),
               onPressed: () async {
                 if (_person.text.trim().isEmpty) return;
-                final personName = _person.text.trim();
-                final a = await ref.read(calendarActionsProvider.future);
-                await a.addEvent(CalendarEvent(
-                  id:        const Uuid().v4(),
-                  title:     personName,
-                  date:      dateKey(widget.day),
-                  category:  'birthday',
-                  itemType:  'birthday',
-                  createdAt: DateTime.now().millisecondsSinceEpoch,
-                ));
-                // Create gift wishlist item with person + date linked
-                if (_idea && _gift.text.trim().isNotEmpty) {
-                  final w =
-                      await ref.read(wishlistActionsProvider.future);
-                  await w.addItem(WishlistItem(
-                    id:               const Uuid().v4(),
-                    name:             _gift.text.trim(),
-                    price:            double.tryParse(_price.text.trim()),
-                    imageUrl:         _image,
-                    category:         _cat.text.trim().isEmpty
-                        ? 'Gift'
-                        : 'Gift • ${_cat.text.trim()}',
-                    productUrl:       _url.text.trim().isEmpty
-                        ? null
-                        : _url.text.trim(),
-                    targetPurchaseAt: _target?.millisecondsSinceEpoch,
-                    isPurchased:      false,
-                    createdAt:        DateTime.now().millisecondsSinceEpoch,
-                    giftFor:          personName,
-                    giftDate:         widget.day.millisecondsSinceEpoch,
+                try {
+                  final personName = _person.text.trim();
+                  final a = await ref.read(calendarActionsProvider.future);
+                  await a.addEvent(CalendarEvent(
+                    id:        const Uuid().v4(),
+                    title:     personName,
+                    date:      dateKey(widget.day),
+                    category:  'birthday',
+                    itemType:  'birthday',
+                    createdAt: DateTime.now().millisecondsSinceEpoch,
                   ));
+                  if (_idea && _gift.text.trim().isNotEmpty) {
+                    final w =
+                        await ref.read(wishlistActionsProvider.future);
+                    await w.addItem(WishlistItem(
+                      id:               const Uuid().v4(),
+                      name:             _gift.text.trim(),
+                      price:            double.tryParse(_price.text.trim()),
+                      imageUrl:         _image,
+                      category:         _cat.text.trim().isEmpty
+                          ? 'Gift'
+                          : 'Gift • ${_cat.text.trim()}',
+                      productUrl:       _url.text.trim().isEmpty
+                          ? null
+                          : _url.text.trim(),
+                      targetPurchaseAt: _target?.millisecondsSinceEpoch,
+                      isPurchased:      false,
+                      createdAt:        DateTime.now().millisecondsSinceEpoch,
+                      giftFor:          personName,
+                      giftDate:         widget.day.millisecondsSinceEpoch,
+                    ));
+                  }
+                  if (mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Unable to save: $e'),
+                        backgroundColor: Colors.red));
+                  }
                 }
-                if (mounted) Navigator.pop(context);
               },
               child: const Text('Save Birthday'),
             ),
@@ -1091,6 +1321,7 @@ const _months = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 String _monthTitle(DateTime d) => '${_months[d.month]} ${d.year}';
-String _fullDate(DateTime d) => '${_months[d.month]} ${d.day}, ${d.year}';
+String _fullDate(DateTime d) =>
+    '${_months[d.month]} ${d.day}, ${d.year}';
 String _fullDateTime(DateTime d) =>
     '${_fullDate(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';

@@ -12,6 +12,10 @@ import '../../core/widgets/app_card.dart';
 import '../../data/models/wishlist_item.dart';
 import 'wishlist_provider.dart';
 
+// ── Module color shortcuts ────────────────────────────────────────────────────
+const _mc  = AndroidTheme.wishlistPrimary;
+const _mcl = AndroidTheme.wishlistPrimaryLight;
+
 // ── Screen ─────────────────────────────────────────────────────────────────────
 class WishlistScreen extends ConsumerWidget {
   const WishlistScreen({super.key});
@@ -39,7 +43,7 @@ class WishlistScreen extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
           onPressed: () => _showItemForm(context),
-          backgroundColor: AndroidTheme.primary,
+          backgroundColor: _mc,
           foregroundColor: Colors.white,
           elevation: 3,
           child: const Icon(Icons.add_rounded, size: 28),
@@ -128,6 +132,14 @@ class _FilterBar extends ConsumerWidget {
             child: ChoiceChip(
               label: Text(label),
               selected: current == f,
+              selectedColor: _mcl,
+              checkmarkColor: _mc,
+              side: BorderSide(
+                  color: current == f ? _mc : AndroidTheme.divider),
+              labelStyle: GoogleFonts.inter(
+                fontWeight: current == f ? FontWeight.w700 : FontWeight.w500,
+                color: current == f ? _mc : AndroidTheme.textSecondary,
+              ),
               onSelected: (_) =>
                   ref.read(wishlistFilterProvider.notifier).state = f,
             ),
@@ -171,7 +183,7 @@ class _WishlistCard extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text('₹${item.price!.toStringAsFixed(0)}',
                       style: GoogleFonts.inter(
-                          color: AndroidTheme.primary,
+                          color: _mc,
                           fontSize: 12,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -567,13 +579,14 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
                     style: GoogleFonts.inter(
                         fontSize: 14, fontWeight: FontWeight.w500)),
                 value: _isPurchased,
-                activeColor: AndroidTheme.primary,
+                activeColor: _mc,
                 onChanged: (v) => setState(() => _isPurchased = v),
               ),
             ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _saving ? null : _save,
+              style: FilledButton.styleFrom(backgroundColor: _mc),
               child: Text(_saving
                   ? 'Saving…'
                   : isEdit
@@ -712,7 +725,7 @@ class _WishlistDetailPage extends ConsumerWidget {
                               : '₹${item.price!.toStringAsFixed(0)}',
                           style: GoogleFonts.inter(
                               fontSize: 18,
-                              color: AndroidTheme.primary,
+                              color: _mc,
                               fontWeight: FontWeight.w800),
                         ),
                       ],
@@ -830,6 +843,9 @@ class _WishlistDetailPage extends ConsumerWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: const Text('Product Link'),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: _mc,
+                      side: const BorderSide(color: _mc)),
                   onPressed: () => _launch(item.productUrl!),
                 ),
               const SizedBox(height: 8),
@@ -840,6 +856,7 @@ class _WishlistDetailPage extends ConsumerWidget {
                 label: Text(item.isPurchased
                     ? 'Mark as Not Purchased'
                     : 'Mark as Purchased'),
+                style: FilledButton.styleFrom(backgroundColor: _mc),
                 onPressed: () async {
                   final actions =
                       await ref.read(wishlistActionsProvider.future);
@@ -858,6 +875,9 @@ class _WishlistDetailPage extends ConsumerWidget {
             OutlinedButton.icon(
               icon: const Icon(Icons.edit_outlined, size: 16),
               label: const Text('Edit'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: _mc,
+                  side: const BorderSide(color: _mc)),
               onPressed: () => _showEditForm(context, item),
             ),
             const SizedBox(width: 16),

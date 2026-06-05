@@ -13,6 +13,10 @@ import '../../core/widgets/app_card.dart';
 import '../../data/models/job.dart';
 import 'job_provider.dart';
 
+// Module color shortcuts
+const _mc  = AndroidTheme.jobsPrimary;
+const _mcl = AndroidTheme.jobsPrimaryLight;
+
 const _kStatuses = ['applied', 'assessment', 'interview', 'offer', 'rejected', 'withdrawn'];
 const _kLabels = {
   'wishlist': 'Wishlist', 'applied': 'Applied', 'assessment': 'Assessment',
@@ -88,7 +92,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
           onPressed: () => _showJobForm(context),
-          backgroundColor: AndroidTheme.primary,
+          backgroundColor: _mc,
           foregroundColor: Colors.white,
           elevation: 3,
           child: const Icon(Icons.add_rounded, size: 28),
@@ -349,6 +353,8 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
   String? _resumeName;
   DateTime? _appliedAt;
   bool _saving = false;
+  String? _titleError;
+  String? _companyError;
 
   @override
   void initState() {
@@ -397,7 +403,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
             colorScheme:
-                const ColorScheme.light(primary: AndroidTheme.primary)),
+                const ColorScheme.light(primary: _mc)),
         child: child!,
       ),
     );
@@ -405,7 +411,24 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
   }
 
   Future<void> _save() async {
-    if (_title.text.trim().isEmpty || _company.text.trim().isEmpty) return;
+    // Clear previous errors
+    setState(() {
+      _titleError   = null;
+      _companyError = null;
+    });
+
+    // Inline validation
+    bool valid = true;
+    if (_title.text.trim().isEmpty) {
+      setState(() => _titleError = 'Job title is required');
+      valid = false;
+    }
+    if (_company.text.trim().isEmpty) {
+      setState(() => _companyError = 'Company name is required');
+      valid = false;
+    }
+    if (!valid) return;
+
     setState(() => _saving = true);
     try {
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -428,12 +451,21 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
       } else {
         await actions.updateJob(job);
       }
-      if (mounted) Navigator.of(context).pop();
-    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(existing == null
+                ? 'Job added successfully'
+                : 'Job updated successfully'),
+            backgroundColor: _mc,
+            duration: const Duration(seconds: 2)));
+        Navigator.of(context).pop();
+      }
+    } catch (e, st) {
+      debugPrint('Job save error: $e\n$st');
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Error saving: $e'),
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Unable to save job. Please try again.'),
             backgroundColor: Colors.red));
       }
     }
@@ -467,14 +499,20 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
             const SizedBox(height: 20),
             TextField(
               controller: _title,
-              decoration: const InputDecoration(labelText: 'Job title *'),
+              decoration: InputDecoration(
+                  labelText: 'Job title *',
+                  errorText: _titleError),
               textCapitalization: TextCapitalization.words,
+              onChanged: (_) => setState(() => _titleError = null),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _company,
-              decoration: const InputDecoration(labelText: 'Company *'),
+              decoration: InputDecoration(
+                  labelText: 'Company *',
+                  errorText: _companyError),
               textCapitalization: TextCapitalization.words,
+              onChanged: (_) => setState(() => _companyError = null),
             ),
             const SizedBox(height: 16),
             Text('Status',
@@ -1013,6 +1051,7 @@ class _StatusSelectorSheetState extends State<_StatusSelectorSheet> {
                     setState(() => _saving = true);
                     await widget.onSelected(_selected);
                   },
+            style: FilledButton.styleFrom(backgroundColor: _mc),
             child: Text(_saving ? 'Saving…' : 'Confirm Status'),
           ),
         ],

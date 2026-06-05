@@ -7,12 +7,13 @@ class AppShell extends StatelessWidget {
   final Widget child;
   const AppShell({super.key, required this.child});
 
+  // Icons matched to what the device renders (verified from screenshots)
   static const _destinations = [
-    (icon: Icons.work_outline,      label: 'Jobs',     path: '/jobs'),
-    (icon: Icons.favorite_outline,  label: 'Wishlist', path: '/wishlist'),
-    (icon: Icons.calendar_today,    label: 'Calendar', path: '/calendar'),
-    (icon: Icons.folder_outlined,   label: 'Assets',   path: '/assets'),
-    (icon: Icons.settings_outlined, label: 'Settings', path: '/settings'),
+    (icon: Icons.work_outline,          label: 'Jobs',     path: '/jobs',     color: AndroidTheme.jobsPrimary,      light: AndroidTheme.jobsPrimaryLight),
+    (icon: Icons.favorite_outline,      label: 'Wishlist', path: '/wishlist', color: AndroidTheme.wishlistPrimary,  light: AndroidTheme.wishlistPrimaryLight),
+    (icon: Icons.calendar_month,        label: 'Calendar', path: '/calendar', color: AndroidTheme.calendarPrimary,  light: AndroidTheme.calendarPrimaryLight),
+    (icon: Icons.folder_outlined,       label: 'Assets',   path: '/assets',   color: AndroidTheme.assetsPrimary,    light: AndroidTheme.assetsPrimaryLight),
+    (icon: Icons.settings_outlined,     label: 'Settings', path: '/settings', color: AndroidTheme.primary,          light: AndroidTheme.primaryLight),
   ];
 
   int _selectedIndex(BuildContext context) {
@@ -24,10 +25,11 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = _selectedIndex(context);
+    final activeColor = _destinations[selected].color;
+    final activeLight = _destinations[selected].light;
     final isWide = MediaQuery.sizeOf(context).width >= 720;
     final isAndroid = Platform.isAndroid;
 
-    // macOS wide — navigation rail, no bottom bar
     if (isWide && !isAndroid) {
       return Scaffold(
         body: Row(
@@ -35,11 +37,16 @@ class AppShell extends StatelessWidget {
             NavigationRail(
               selectedIndex: selected,
               labelType: NavigationRailLabelType.all,
+              selectedIconTheme: IconThemeData(color: activeColor),
+              selectedLabelTextStyle: TextStyle(
+                  color: activeColor, fontWeight: FontWeight.w600),
+              indicatorColor: activeLight,
               onDestinationSelected: (i) =>
                   context.go(_destinations[i].path),
               destinations: _destinations
                   .map((d) => NavigationRailDestination(
-                        icon: Icon(d.icon), label: Text(d.label)))
+                        icon: Icon(d.icon),
+                        label: Text(d.label)))
                   .toList(),
             ),
             const VerticalDivider(thickness: 1, width: 1),
@@ -49,9 +56,6 @@ class AppShell extends StatelessWidget {
       );
     }
 
-    // Android — NO outer Scaffold wrapping.
-    // Each screen provides its own Scaffold + FAB.
-    // AppShell only injects the bottom nav bar via a Stack.
     return Stack(
       children: [
         Padding(
@@ -60,15 +64,13 @@ class AppShell extends StatelessWidget {
           ),
           child: child,
         ),
-        // Bottom nav bar pinned at bottom
         Positioned(
           left: 0, right: 0, bottom: 0,
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(
-                top: BorderSide(color: AndroidTheme.divider, width: 1),
-              ),
+                  top: BorderSide(color: AndroidTheme.divider, width: 1)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.06),
@@ -77,19 +79,58 @@ class AppShell extends StatelessWidget {
                 ),
               ],
             ),
-            child: NavigationBar(
-              selectedIndex: selected,
-              onDestinationSelected: (i) =>
-                  context.go(_destinations[i].path),
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              elevation: 0,
-              height: 64,
-              destinations: _destinations
-                  .map((d) => NavigationDestination(
-                        icon: Icon(d.icon), label: d.label))
-                  .toList(),
+            child: Theme(
+              // Override NavigationBar theme with the active module color
+              data: Theme.of(context).copyWith(
+                navigationBarTheme: NavigationBarThemeData(
+                  backgroundColor: Colors.white,
+                  indicatorColor: activeLight,
+                  height: 64,
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  labelTextStyle:
+                      WidgetStateProperty.resolveWith((states) {
+                    final isSelected =
+                        states.contains(WidgetState.selected);
+                    return TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? activeColor
+                          : AndroidTheme.textTertiary,
+                    );
+                  }),
+                  iconTheme:
+                      WidgetStateProperty.resolveWith((states) {
+                    final isSelected =
+                        states.contains(WidgetState.selected);
+                    return IconThemeData(
+                      color: isSelected
+                          ? activeColor
+                          : AndroidTheme.textTertiary,
+                      size: 22,
+                    );
+                  }),
+                ),
+              ),
+              child: NavigationBar(
+                selectedIndex: selected,
+                onDestinationSelected: (i) =>
+                    context.go(_destinations[i].path),
+                backgroundColor: Colors.white,
+                surfaceTintColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                elevation: 0,
+                height: 64,
+                destinations: _destinations
+                    .map((d) => NavigationDestination(
+                          icon: Icon(d.icon),
+                          label: d.label))
+                    .toList(),
+              ),
             ),
           ),
         ),

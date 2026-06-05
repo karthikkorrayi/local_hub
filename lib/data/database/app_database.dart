@@ -19,6 +19,21 @@ import '../daos/week_todo_dao.dart';
 
 part 'app_database.g.dart';
 
+// ── Helper: add column only if it doesn't already exist ──────────────────────
+// SQLite has no "ADD COLUMN IF NOT EXISTS" before version 3.35.
+// We catch the error silently so users who already have the column
+// (e.g. from a previous install or partial migration) are not affected.
+Future<void> _safeAddColumn(
+    sqflite.DatabaseExecutor db, String sql) async {
+  try {
+    await db.execute(sql);
+  } catch (_) {
+    // Column already exists — safe to ignore.
+  }
+}
+
+// ── Migrations ────────────────────────────────────────────────────────────────
+
 final migration1to2 = Migration(1, 2, (database) async {
   await database.execute('DROP TABLE IF EXISTS CalendarEvent');
   await database.execute('''
@@ -50,7 +65,8 @@ final migration2to3 = Migration(2, 3, (database) async {
     CREATE TABLE IF NOT EXISTS `Asset` (
       `id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL,
       `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT,
-      `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`)
+      `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL,
+      PRIMARY KEY (`id`)
     )
   ''');
   await database.execute('''
@@ -62,36 +78,64 @@ final migration2to3 = Migration(2, 3, (database) async {
 });
 
 final migration3to4 = Migration(3, 4, (database) async {
-  await database.execute('ALTER TABLE Job ADD COLUMN resumePath TEXT');
-  await database.execute('ALTER TABLE Job ADD COLUMN appliedAt INTEGER');
+  await _safeAddColumn(
+      database, 'ALTER TABLE Job ADD COLUMN resumePath TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE Job ADD COLUMN appliedAt INTEGER');
 });
 
+// migration4to5 is the one that adds noteHistory / statusHistory to Job.
+// These are the columns causing the current crash. Using _safeAddColumn
+// means the migration succeeds even if some columns already exist from
+// a partial previous run.
 final migration4to5 = Migration(4, 5, (database) async {
-  await database.execute('ALTER TABLE Job ADD COLUMN noteHistory TEXT');
-  await database.execute('ALTER TABLE Job ADD COLUMN statusHistory TEXT');
-  await database.execute('ALTER TABLE WishlistItem ADD COLUMN targetPurchaseAt INTEGER');
-  await database.execute('ALTER TABLE WishlistItem ADD COLUMN purchasedAt INTEGER');
-  await database.execute('ALTER TABLE CalendarEvent ADD COLUMN itemType TEXT');
-  await database.execute('ALTER TABLE CalendarEvent ADD COLUMN contactInfo TEXT');
-  await database.execute('ALTER TABLE CalendarEvent ADD COLUMN attachmentPath TEXT');
-  await database.execute('ALTER TABLE CalendarEvent ADD COLUMN isDone INTEGER NOT NULL DEFAULT 0');
-  await database.execute('ALTER TABLE Asset ADD COLUMN filePath TEXT');
-  await database.execute('ALTER TABLE AssetFolder ADD COLUMN description TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE Job ADD COLUMN noteHistory TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE Job ADD COLUMN statusHistory TEXT');
+  await _safeAddColumn(database,
+      'ALTER TABLE WishlistItem ADD COLUMN targetPurchaseAt INTEGER');
+  await _safeAddColumn(database,
+      'ALTER TABLE WishlistItem ADD COLUMN purchasedAt INTEGER');
+  await _safeAddColumn(
+      database, 'ALTER TABLE CalendarEvent ADD COLUMN itemType TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE CalendarEvent ADD COLUMN contactInfo TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE CalendarEvent ADD COLUMN attachmentPath TEXT');
+  await _safeAddColumn(database,
+      'ALTER TABLE CalendarEvent ADD COLUMN isDone INTEGER NOT NULL DEFAULT 0');
+  await _safeAddColumn(
+      database, 'ALTER TABLE Asset ADD COLUMN filePath TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE AssetFolder ADD COLUMN description TEXT');
 });
 
 final migration5to6 = Migration(5, 6, (database) async {
-  await database.execute('ALTER TABLE AssetFolder ADD COLUMN parentId TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE AssetFolder ADD COLUMN parentId TEXT');
 });
 
-// Migration 6→7: add giftFor and giftDate to WishlistItem
+// Migration 6→7: gift linking fields on WishlistItem
 final migration6to7 = Migration(6, 7, (database) async {
-  await database.execute('ALTER TABLE WishlistItem ADD COLUMN giftFor TEXT');
-  await database.execute('ALTER TABLE WishlistItem ADD COLUMN giftDate INTEGER');
+  await _safeAddColumn(
+      database, 'ALTER TABLE WishlistItem ADD COLUMN giftFor TEXT');
+  await _safeAddColumn(
+      database, 'ALTER TABLE WishlistItem ADD COLUMN giftDate INTEGER');
 });
 
+// ── Database definition ───────────────────────────────────────────────────────
 @Database(
   version: 7,
-  entities: [Job, WishlistItem, CalendarEvent, Asset, AssetFolder, DayEntry, WeekTodo],
+  entities: [
+    Job,
+    WishlistItem,
+    CalendarEvent,
+    Asset,
+    AssetFolder,
+    DayEntry,
+    WeekTodo,
+  ],
 )
 abstract class AppDatabase extends FloorDatabase {
   JobDao get jobDao;

@@ -12,6 +12,10 @@ import '../../data/models/asset.dart';
 import '../../data/models/asset_folder.dart';
 import 'asset_provider.dart';
 
+// ── Module color shortcuts ────────────────────────────────────────────────────
+const _mc  = AndroidTheme.assetsPrimary;
+const _mcl = AndroidTheme.assetsPrimaryLight;
+
 // ── Screen ─────────────────────────────────────────────────────────────────────
 class AssetsScreen extends ConsumerStatefulWidget {
   const AssetsScreen({super.key});
@@ -21,7 +25,6 @@ class AssetsScreen extends ConsumerStatefulWidget {
 }
 
 class _AssetsScreenState extends ConsumerState<AssetsScreen> {
-  // Breadcrumb trail: list of folders from root to current
   final List<AssetFolder> _trail = [];
 
   AssetFolder? get _current => _trail.isEmpty ? null : _trail.last;
@@ -32,7 +35,6 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
   }
 
   void _navigateTo(int trailIndex) {
-    // trailIndex == -1 means root
     setState(() {
       if (trailIndex < 0) {
         _trail.clear();
@@ -61,12 +63,21 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () => _navigateTo(_trail.length - 2),
               ),
+        actions: [
+          // Show delete folder button when inside a folder
+          if (_current != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Delete this folder',
+              onPressed: () => _confirmDeleteFolder(context, _current!),
+            ),
+        ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 64),
         child: FloatingActionButton(
           onPressed: () => _showAddOptions(context),
-          backgroundColor: AndroidTheme.primary,
+          backgroundColor: _mc,
           foregroundColor: Colors.white,
           child: const Icon(Icons.add_rounded),
         ),
@@ -74,14 +85,12 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Breadcrumb navigation ─────────────────────────────────────
           if (_trail.isNotEmpty)
             _BreadcrumbBar(
               trail: _trail,
-              onTap: (index) => _navigateTo(index),
+              onTap: (i) => _navigateTo(i),
               onRoot: () => _navigateTo(-1),
             ),
-          // ── Content ───────────────────────────────────────────────────
           Expanded(
             child: folders.isEmpty && assets.isEmpty
                 ? const _EmptyAssets()
@@ -92,6 +101,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                       ...folders.map((f) => _FolderTile(
                             folder: f,
                             onTap: () => _enterFolder(f),
+                            onDelete: () =>
+                                _confirmDeleteFolder(context, f),
                           )),
                       ...assets
                           .map((a) => _AssetTile(asset: a)),
@@ -103,11 +114,69 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     );
   }
 
+  // ── Folder delete with tree preview ────────────────────────────────────────
+  Future<void> _confirmDeleteFolder(
+      BuildContext context, AssetFolder folder) async {
+    // Load folder contents for preview
+    final db = await ref.read(assetActionsProvider.future);
+    // We need children — read directly from providers
+    final allFolders =
+        ref.read(folderListProvider).valueOrNull ?? [];
+    final allAssets =
+        ref.read(assetListProvider).valueOrNull ?? [];
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => _DeleteFolderDialog(
+        folder: folder,
+        allFolders: allFolders,
+        allAssets: allAssets,
+        onConfirm: () async {
+          Navigator.of(dialogCtx).pop();
+          await _deleteFolderCascade(folder, allFolders, allAssets);
+          // If we deleted the current folder, pop trail
+          if (_current?.id == folder.id) {
+            _navigateTo(_trail.length - 2);
+          }
+        },
+      ),
+    );
+  }
+
+  /// Recursively deletes folder records and asset references
+  /// from the database only. Original device files are NOT touched.
+  Future<void> _deleteFolderCascade(
+    AssetFolder folder,
+    List<AssetFolder> allFolders,
+    List<Asset> allAssets,
+  ) async {
+    final actions = await ref.read(assetActionsProvider.future);
+
+    // Delete direct assets in this folder
+    final directAssets =
+        allAssets.where((a) => a.folderId == folder.id).toList();
+    for (final a in directAssets) {
+      await actions.deleteAsset(a);
+    }
+
+    // Recurse into child folders
+    final children =
+        allFolders.where((f) => f.parentId == folder.id).toList();
+    for (final child in children) {
+      await _deleteFolderCascade(child, allFolders, allAssets);
+    }
+
+    // Delete the folder record itself
+    await actions.deleteFolder(folder);
+  }
+
   void _showAddOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -115,22 +184,35 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.create_new_folder_outlined,
-                    color: AndroidTheme.primary),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: _mcl,
+                      borderRadius: BorderRadius.circular(10)),
+                  child:
+                      const Icon(Icons.create_new_folder_outlined, color: _mc),
+                ),
                 title: Text('Create Folder',
-                    style:
-                        GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(context);
                   _showFolderDialog(context);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.upload_file_rounded,
-                    color: AndroidTheme.primary),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: _mcl,
+                      borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.upload_file_rounded, color: _mc),
+                ),
                 title: Text('Upload File',
-                    style:
-                        GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(context);
                   _uploadFile(context);
@@ -151,7 +233,8 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
         title: const Text('Create Folder'),
         content: TextField(
           controller: name,
-          decoration: const InputDecoration(labelText: 'Folder name'),
+          decoration:
+              const InputDecoration(labelText: 'Folder name'),
           autofocus: true,
         ),
         actions: [
@@ -159,19 +242,21 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
               onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Cancel')),
           FilledButton(
-              onPressed: () async {
-                if (name.text.trim().isEmpty) return;
-                final a = await ref.read(assetActionsProvider.future);
-                await a.addFolder(AssetFolder(
-                  id:        const Uuid().v4(),
-                  name:      name.text.trim(),
-                  icon:      'folder',
-                  parentId:  _current?.id,
-                  createdAt: DateTime.now().millisecondsSinceEpoch,
-                ));
-                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-              },
-              child: const Text('Create')),
+            style: FilledButton.styleFrom(backgroundColor: _mc),
+            onPressed: () async {
+              if (name.text.trim().isEmpty) return;
+              final a = await ref.read(assetActionsProvider.future);
+              await a.addFolder(AssetFolder(
+                id:        const Uuid().v4(),
+                name:      name.text.trim(),
+                icon:      'folder',
+                parentId:  _current?.id,
+                createdAt: DateTime.now().millisecondsSinceEpoch,
+              ));
+              if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+            },
+            child: const Text('Create'),
+          ),
         ],
       ),
     );
@@ -189,7 +274,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     final now = DateTime.now().millisecondsSinceEpoch;
     final a   = await ref.read(assetActionsProvider.future);
 
-    // Store original file path — no duplication
+    // Store original path only — no file duplication
     await a.addAsset(Asset(
       id:        const Uuid().v4(),
       folderId:  _current?.id ?? 'root',
@@ -203,15 +288,168 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
 
   static String _typeOf(String ext) {
     if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) return 'image';
-    if (['pdf', 'doc', 'docx', 'txt', 'csv'].contains(ext)) return 'document';
+    if (['pdf', 'doc', 'docx', 'txt', 'csv'].contains(ext))
+      return 'document';
     return 'other';
+  }
+}
+
+// ── Delete folder confirmation dialog with tree ────────────────────────────────
+class _DeleteFolderDialog extends StatelessWidget {
+  final AssetFolder folder;
+  final List<AssetFolder> allFolders;
+  final List<Asset> allAssets;
+  final VoidCallback onConfirm;
+
+  const _DeleteFolderDialog({
+    required this.folder,
+    required this.allFolders,
+    required this.allAssets,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Delete Folder?'),
+      content: SizedBox(
+        width: 320,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: AndroidTheme.textSecondary),
+                  children: [
+                    const TextSpan(text: 'Folder: '),
+                    TextSpan(
+                      text: folder.name,
+                      style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          color: AndroidTheme.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Only app references are deleted. Your original device files are kept.',
+                style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AndroidTheme.textTertiary),
+              ),
+              const SizedBox(height: 12),
+              Text('Contents:',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 8),
+              _FolderTree(
+                  folder: folder,
+                  allFolders: allFolders,
+                  allAssets: allAssets,
+                  depth: 0),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel')),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          onPressed: onConfirm,
+          child: const Text('Delete Folder'),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Tree widget for folder preview ────────────────────────────────────────────
+class _FolderTree extends StatelessWidget {
+  final AssetFolder folder;
+  final List<AssetFolder> allFolders;
+  final List<Asset> allAssets;
+  final int depth;
+
+  const _FolderTree({
+    required this.folder,
+    required this.allFolders,
+    required this.allAssets,
+    required this.depth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final indent = depth * 16.0;
+    final children =
+        allFolders.where((f) => f.parentId == folder.id).toList();
+    final assets =
+        allAssets.where((a) => a.folderId == folder.id).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Folder row
+        Padding(
+          padding: EdgeInsets.only(left: indent),
+          child: Row(children: [
+            const Icon(Icons.folder_rounded,
+                size: 16, color: _mc),
+            const SizedBox(width: 6),
+            Text(folder.name,
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600, fontSize: 13)),
+          ]),
+        ),
+        // Assets
+        ...assets.map((a) => Padding(
+              padding: EdgeInsets.only(left: indent + 20.0, top: 4),
+              child: Row(children: [
+                Icon(_iconFor(a), size: 14, color: AndroidTheme.textSecondary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(a.title,
+                      style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AndroidTheme.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ]),
+            )),
+        // Child folders (recursive)
+        ...children.map((c) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _FolderTree(
+                  folder: c,
+                  allFolders: allFolders,
+                  allAssets: allAssets,
+                  depth: depth + 1),
+            )),
+      ],
+    );
+  }
+
+  static IconData _iconFor(Asset a) {
+    final e = (a.filePath ?? a.title).toLowerCase();
+    if (e.endsWith('.pdf')) return Icons.picture_as_pdf_rounded;
+    if (e.endsWith('.jpg') ||
+        e.endsWith('.jpeg') ||
+        e.endsWith('.png')) return Icons.image_rounded;
+    return Icons.insert_drive_file_rounded;
   }
 }
 
 // ── Breadcrumb bar ─────────────────────────────────────────────────────────────
 class _BreadcrumbBar extends StatelessWidget {
   final List<AssetFolder> trail;
-  final void Function(int index) onTap;
+  final void Function(int) onTap;
   final VoidCallback onRoot;
 
   const _BreadcrumbBar(
@@ -221,54 +459,47 @@ class _BreadcrumbBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AndroidTheme.card,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            // Root crumb
             GestureDetector(
               onTap: onRoot,
-              child: Row(
-                children: [
-                  const Icon(Icons.folder_open_rounded,
-                      size: 16, color: AndroidTheme.primary),
-                  const SizedBox(width: 4),
-                  Text('Assets',
-                      style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AndroidTheme.primary)),
-                ],
-              ),
+              child: Row(children: [
+                const Icon(Icons.folder_open_rounded,
+                    size: 16, color: _mc),
+                const SizedBox(width: 4),
+                Text('Assets',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _mc)),
+              ]),
             ),
             ...List.generate(trail.length, (i) {
-              final folder = trail[i];
+              final f = trail[i];
               final isLast = i == trail.length - 1;
-              return Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Icon(Icons.chevron_right_rounded,
-                        size: 16, color: AndroidTheme.textTertiary),
-                  ),
-                  GestureDetector(
-                    onTap: isLast ? null : () => onTap(i),
-                    child: Text(
-                      folder.name,
+              return Row(children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.chevron_right_rounded,
+                      size: 16, color: AndroidTheme.textTertiary),
+                ),
+                GestureDetector(
+                  onTap: isLast ? null : () => onTap(i),
+                  child: Text(f.name,
                       style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: isLast
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: isLast
-                            ? AndroidTheme.textPrimary
-                            : AndroidTheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              );
+                          fontSize: 13,
+                          fontWeight: isLast
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: isLast
+                              ? AndroidTheme.textPrimary
+                              : _mc)),
+                ),
+              ]);
             }),
           ],
         ),
@@ -286,15 +517,14 @@ class _EmptyAssets extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(top: 90),
-        child: Column(
-          children: [
-            Icon(Icons.folder_open_rounded,
-                size: 56, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            Text('No files or folders here yet',
-                style: GoogleFonts.inter(color: Colors.grey.shade600)),
-          ],
-        ),
+        child: Column(children: [
+          Icon(Icons.folder_open_rounded,
+              size: 56, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          Text('No files or folders here yet',
+              style: GoogleFonts.inter(
+                  color: Colors.grey.shade600)),
+        ]),
       ),
     );
   }
@@ -304,7 +534,11 @@ class _EmptyAssets extends StatelessWidget {
 class _FolderTile extends ConsumerWidget {
   final AssetFolder folder;
   final VoidCallback onTap;
-  const _FolderTile({required this.folder, required this.onTap});
+  final VoidCallback onDelete;
+  const _FolderTile(
+      {required this.folder,
+      required this.onTap,
+      required this.onDelete});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -317,20 +551,31 @@ class _FolderTile extends ConsumerWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-              color: AndroidTheme.primaryLight,
+              color: _mcl,
               borderRadius: BorderRadius.circular(10)),
-          child: const Icon(Icons.folder_rounded,
-              color: AndroidTheme.primary, size: 22),
+          child: const Icon(Icons.folder_rounded, color: _mc, size: 22),
         ),
         title: Text(folder.name,
             style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
         subtitle: folder.description != null
             ? Text(folder.description!,
                 style: GoogleFonts.inter(
-                    fontSize: 12, color: AndroidTheme.textTertiary))
+                    fontSize: 12,
+                    color: AndroidTheme.textTertiary))
             : null,
-        trailing: const Icon(Icons.chevron_right_rounded,
-            color: AndroidTheme.textTertiary),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded,
+                  size: 20, color: AndroidTheme.textTertiary),
+              tooltip: 'Delete folder',
+              onPressed: onDelete,
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: AndroidTheme.textTertiary),
+          ],
+        ),
       ),
     );
   }
@@ -354,7 +599,8 @@ class _AssetTile extends ConsumerWidget {
           decoration: BoxDecoration(
               color: _bgColor(asset),
               borderRadius: BorderRadius.circular(10)),
-          child: Icon(_iconFor(asset), color: _iconColor(asset), size: 22),
+          child: Icon(_iconFor(asset),
+              color: _iconColor(asset), size: 22),
         ),
         title: Text(asset.title,
             style: GoogleFonts.inter(fontWeight: FontWeight.w600),
@@ -372,7 +618,8 @@ class _AssetTile extends ConsumerWidget {
             if (v == 'delete') {
               final ok = await _confirmDelete(context, asset);
               if (ok == true) {
-                final a = await ref.read(assetActionsProvider.future);
+                final a =
+                    await ref.read(assetActionsProvider.future);
                 await a.deleteAsset(asset);
               }
             } else {
@@ -391,10 +638,8 @@ class _AssetTile extends ConsumerWidget {
   static IconData _iconFor(Asset a) {
     final e = (a.filePath ?? a.title).toLowerCase();
     if (e.endsWith('.pdf')) return Icons.picture_as_pdf_rounded;
-    if (e.endsWith('.jpg') ||
-        e.endsWith('.jpeg') ||
-        e.endsWith('.png') ||
-        e.endsWith('.webp')) return Icons.image_rounded;
+    if (e.endsWith('.jpg') || e.endsWith('.jpeg') || e.endsWith('.png'))
+      return Icons.image_rounded;
     if (e.endsWith('.doc') || e.endsWith('.docx'))
       return Icons.description_rounded;
     if (e.endsWith('.xls') || e.endsWith('.xlsx'))
@@ -405,93 +650,128 @@ class _AssetTile extends ConsumerWidget {
   static Color _iconColor(Asset a) {
     final e = (a.filePath ?? a.title).toLowerCase();
     if (e.endsWith('.pdf')) return Colors.red.shade700;
-    if (e.endsWith('.jpg') ||
-        e.endsWith('.jpeg') ||
-        e.endsWith('.png')) return Colors.blue.shade700;
-    if (e.endsWith('.doc') || e.endsWith('.docx')) return Colors.blue.shade600;
-    if (e.endsWith('.xls') || e.endsWith('.xlsx')) return Colors.green.shade700;
+    if (e.endsWith('.jpg') || e.endsWith('.jpeg') || e.endsWith('.png'))
+      return Colors.blue.shade700;
+    if (e.endsWith('.doc') || e.endsWith('.docx'))
+      return Colors.blue.shade600;
+    if (e.endsWith('.xls') || e.endsWith('.xlsx'))
+      return Colors.green.shade700;
     return AndroidTheme.textSecondary;
   }
 
   static Color _bgColor(Asset a) {
     final e = (a.filePath ?? a.title).toLowerCase();
     if (e.endsWith('.pdf')) return Colors.red.shade50;
-    if (e.endsWith('.jpg') ||
-        e.endsWith('.jpeg') ||
-        e.endsWith('.png')) return Colors.blue.shade50;
-    if (e.endsWith('.doc') || e.endsWith('.docx')) return Colors.blue.shade50;
-    if (e.endsWith('.xls') || e.endsWith('.xlsx')) return Colors.green.shade50;
+    if (e.endsWith('.jpg') || e.endsWith('.jpeg') || e.endsWith('.png'))
+      return Colors.blue.shade50;
+    if (e.endsWith('.doc') || e.endsWith('.docx'))
+      return Colors.blue.shade50;
+    if (e.endsWith('.xls') || e.endsWith('.xlsx'))
+      return Colors.green.shade50;
     return AndroidTheme.surface;
   }
 
+  /// Open file — never produce a blank/black screen.
   void _openFile(BuildContext context, Asset a) {
     final path = a.filePath;
+
+    // Guard: no path stored
     if (path == null || path.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('No file path stored for this asset.')));
+      _snack(context, 'No file path stored for this asset.');
       return;
     }
-    if (!File(path).existsSync()) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('File not available or moved'),
-          backgroundColor: Colors.orange));
+
+    // Guard: file missing from device
+    try {
+      if (!File(path).existsSync()) {
+        _snack(context,
+            'This file was moved or removed from device',
+            warn: true);
+        return;
+      }
+    } catch (_) {
+      _snack(context, 'Unable to open this file', warn: true);
       return;
     }
 
     final lower = path.toLowerCase();
     final isPdf = lower.endsWith('.pdf');
-    final isImage = lower.endsWith('.jpg') ||
+    final isImg = lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
         lower.endsWith('.png') ||
         lower.endsWith('.webp');
 
-    if (isPdf || isImage) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => _FileViewerPage(path: path, name: a.title)));
+    if (isPdf || isImg) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              _FileViewerPage(path: path, name: a.title),
+        ),
+      );
     } else {
-      // Hand off to external app — never show blank screen
       _launchExternal(context, path);
     }
   }
 
   Future<void> _launchExternal(BuildContext context, String path) async {
     try {
-      final uri  = Uri.file(path);
-      final ok   = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final uri = Uri.file(path);
+      final ok  = await launchUrl(uri,
+          mode: LaunchMode.externalApplication);
       if (!ok && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'Cannot preview this file. Open with another application?')));
+        _snack(context,
+            'Cannot preview this file. Open with another application?');
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('File not available or moved'),
-            backgroundColor: Colors.orange));
+        _snack(context, 'Unable to open this file', warn: true);
       }
     }
+  }
+
+  void _snack(BuildContext context, String msg, {bool warn = false}) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg),
+        backgroundColor: warn ? Colors.orange : null));
   }
 
   Future<bool?> _confirmDelete(BuildContext context, Asset a) =>
       showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Delete file?'),
-          content: Text('Remove "${a.title}"?'),
+        builder: (dialogCtx) => AlertDialog(
+          title: const Text('Delete file reference?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('"${a.title}"',
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(
+                'Only the app reference is deleted. The original file on your device is not affected.',
+                style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AndroidTheme.textTertiary),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogCtx, false),
                 child: const Text('Cancel')),
             TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete',
-                    style: TextStyle(color: Colors.red))),
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                style: TextButton.styleFrom(
+                    foregroundColor: Colors.red),
+                child: const Text('Delete Reference')),
           ],
         ),
       );
 }
 
-// ── File viewer (PDF + image) ──────────────────────────────────────────────────
+// ── File viewer ────────────────────────────────────────────────────────────────
 class _FileViewerPage extends StatelessWidget {
   final String path;
   final String name;
@@ -506,22 +786,30 @@ class _FileViewerPage extends StatelessWidget {
         lower.endsWith('.png') ||
         lower.endsWith('.webp');
 
+    Widget body;
+    if (isPdf) {
+      body = SfPdfViewer.file(File(path));
+    } else if (isImage) {
+      body = InteractiveViewer(
+          child: Center(
+              child: Image.file(
+        File(path),
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _broken(context),
+      )));
+    } else {
+      body = _broken(context);
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      body: isPdf
-          ? SfPdfViewer.file(File(path))
-          : isImage
-              ? InteractiveViewer(
-                  child: Center(
-                      child: Image.file(File(path),
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) =>
-                              _missingFile(context))))
-              : _missingFile(context),
+      appBar: AppBar(
+          title: Text(name,
+              maxLines: 1, overflow: TextOverflow.ellipsis)),
+      body: body,
     );
   }
 
-  Widget _missingFile(BuildContext context) {
+  Widget _broken(BuildContext context) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -531,6 +819,11 @@ class _FileViewerPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text('File not available or moved',
               style: GoogleFonts.inter(color: Colors.grey)),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Go back'),
+          ),
         ],
       ),
     );

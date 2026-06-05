@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AndroidTheme {
+  // ── Global palette ──────────────────────────────────────────────────────────
   static const Color primary       = Color(0xFF1EC86A);
   static const Color primaryLight  = Color(0xFFE8F8F0);
   static const Color primaryDark   = Color(0xFF17A358);
@@ -16,6 +17,45 @@ class AndroidTheme {
   static const Color warning       = Color(0xFFF59E0B);
   static const Color info          = Color(0xFF3B82F6);
 
+  // ── Module theme colors ─────────────────────────────────────────────────────
+  /// Jobs — orange
+  static const Color jobsPrimary      = Color(0xFFF97316);
+  static const Color jobsPrimaryLight = Color(0xFFFFF7ED);
+
+  /// Wishlist — red
+  static const Color wishlistPrimary      = Color(0xFFEF4444);
+  static const Color wishlistPrimaryLight = Color(0xFFFEF2F2);
+
+  /// Calendar — blue
+  static const Color calendarPrimary      = Color(0xFF3B82F6);
+  static const Color calendarPrimaryLight = Color(0xFFEFF6FF);
+
+  /// Assets — amber/yellow
+  static const Color assetsPrimary      = Color(0xFFD97706);
+  static const Color assetsPrimaryLight = Color(0xFFFFFBEB);
+
+  // ── Module color helpers ────────────────────────────────────────────────────
+  static Color moduleColor(String module) {
+    switch (module) {
+      case 'jobs':     return jobsPrimary;
+      case 'wishlist': return wishlistPrimary;
+      case 'calendar': return calendarPrimary;
+      case 'assets':   return assetsPrimary;
+      default:         return primary;
+    }
+  }
+
+  static Color moduleLightColor(String module) {
+    switch (module) {
+      case 'jobs':     return jobsPrimaryLight;
+      case 'wishlist': return wishlistPrimaryLight;
+      case 'calendar': return calendarPrimaryLight;
+      case 'assets':   return assetsPrimaryLight;
+      default:         return primaryLight;
+    }
+  }
+
+  // ── Status colors ───────────────────────────────────────────────────────────
   static Color statusColor(String status) {
     switch (status) {
       case 'applied':   return const Color(0xFF1EC86A);
@@ -26,6 +66,7 @@ class AndroidTheme {
     }
   }
 
+  // ── Global theme ─────────────────────────────────────────────────────────────
   static ThemeData get theme => ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -100,9 +141,11 @@ class AndroidTheme {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: primary, width: 1.5),
       ),
-      labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
+      labelStyle: GoogleFonts.inter(
+          color: textSecondary, fontSize: 14, fontWeight: FontWeight.w500),
       hintStyle: GoogleFonts.inter(color: textTertiary, fontSize: 14),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -110,7 +153,8 @@ class AndroidTheme {
         foregroundColor: Colors.white,
         minimumSize: const Size(double.infinity, 54),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+        textStyle:
+            GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         elevation: 0,
       ),
     ),
@@ -120,21 +164,27 @@ class AndroidTheme {
         side: const BorderSide(color: primary),
         minimumSize: const Size(0, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+        textStyle:
+            GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: card,
       selectedColor: primaryLight,
-      labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: textPrimary),
-      secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: primary),
+      labelStyle: GoogleFonts.inter(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: textPrimary),
+      secondaryLabelStyle: GoogleFonts.inter(
+          fontSize: 13, fontWeight: FontWeight.w600, color: primary),
       side: const BorderSide(color: divider),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       showCheckmark: true,
       checkmarkColor: primary,
     ),
-    dividerTheme: const DividerThemeData(color: divider, thickness: 1, space: 1),
+    dividerTheme:
+        const DividerThemeData(color: divider, thickness: 1, space: 1),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: card,
       surfaceTintColor: Colors.transparent,
@@ -149,14 +199,20 @@ class AndroidTheme {
       backgroundColor: card,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      titleTextStyle: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700, color: textPrimary),
-      contentTextStyle: GoogleFonts.inter(fontSize: 14, color: textSecondary, height: 1.5),
+      titleTextStyle: GoogleFonts.inter(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: textPrimary),
+      contentTextStyle: GoogleFonts.inter(
+          fontSize: 14, color: textSecondary, height: 1.5),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) =>
           states.contains(WidgetState.selected) ? primary : Colors.white),
       trackColor: WidgetStateProperty.resolveWith((states) =>
-          states.contains(WidgetState.selected) ? primary.withValues(alpha: 0.3) : divider),
+          states.contains(WidgetState.selected)
+              ? primary.withValues(alpha: 0.3)
+              : divider),
     ),
   );
 }
