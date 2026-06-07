@@ -3,22 +3,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/backup/backup_provider.dart';
 import 'core/router/app_router.dart';
-import 'core/theme/app_theme.dart';
 import 'core/theme/android_theme.dart';
+import 'core/theme/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: LocalHubApp()));
+  runApp(const ProviderScope(child: MyNestApp()));
 }
 
-class LocalHubApp extends StatelessWidget {
-  const LocalHubApp({super.key});
+class MyNestApp extends ConsumerWidget {
+  const MyNestApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appThemeMode = ref.watch(themeProvider);
+
     return MaterialApp.router(
-      title: 'Local Hub',
-      theme: Platform.isAndroid ? AndroidTheme.theme : AppTheme.light,
+      title: 'MyNest',
+      // Light theme — always provided
+      theme: AndroidTheme.theme,
+      // Dark theme — always provided
+      darkTheme: AndroidTheme.darkTheme,
+      // Which to use — driven by user preference
+      themeMode: appThemeMode.flutterMode,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
       builder: (context, child) =>

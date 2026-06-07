@@ -10,7 +10,8 @@ final databaseProvider = FutureProvider<AppDatabase>((ref) async {
         migration3to4,
         migration4to5,
         migration5to6,
-        migration6to7,   // adds giftFor + giftDate to WishlistItem
+        migration6to7,
+        migration7to8, // birthDay, birthMonth, isRecurring
       ])
       .build();
   return database;

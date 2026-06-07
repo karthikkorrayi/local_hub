@@ -92,7 +92,7 @@ class _$AppDatabase extends AppDatabase {
     Callback? callback,
   ]) async {
     final databaseOptions = sqflite.OpenDatabaseOptions(
-      version: 7,
+      version: 8,
       onConfigure: (database) async {
         await database.execute('PRAGMA foreign_keys = ON');
         await callback?.onConfigure?.call(database);
@@ -112,7 +112,7 @@ class _$AppDatabase extends AppDatabase {
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `WishlistItem` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `price` REAL, `imageUrl` TEXT, `category` TEXT, `productUrl` TEXT, `targetPurchaseAt` INTEGER, `isPurchased` INTEGER NOT NULL, `purchasedAt` INTEGER, `createdAt` INTEGER NOT NULL, `giftFor` TEXT, `giftDate` INTEGER, PRIMARY KEY (`id`))');
         await database.execute(
-            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `itemType` TEXT, `contactInfo` TEXT, `attachmentPath` TEXT, `isDone` INTEGER NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
+            'CREATE TABLE IF NOT EXISTS `CalendarEvent` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `date` TEXT NOT NULL, `startTime` TEXT, `endTime` TEXT, `category` TEXT NOT NULL, `itemType` TEXT, `contactInfo` TEXT, `attachmentPath` TEXT, `isDone` INTEGER NOT NULL, `linkedJobId` TEXT, `linkedJobTitle` TEXT, `createdAt` INTEGER NOT NULL, `birthDay` INTEGER, `birthMonth` INTEGER, `isRecurring` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
             'CREATE TABLE IF NOT EXISTS `Asset` (`id` TEXT NOT NULL, `folderId` TEXT NOT NULL, `title` TEXT NOT NULL, `type` TEXT NOT NULL, `notes` TEXT, `imagePath` TEXT, `tags` TEXT, `filePath` TEXT, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY (`id`))');
         await database.execute(
@@ -476,7 +476,10 @@ class _$CalendarDao extends CalendarDao {
                   'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'birthDay': item.birthDay,
+                  'birthMonth': item.birthMonth,
+                  'isRecurring': item.isRecurring ? 1 : 0
                 }),
         _calendarEventUpdateAdapter = UpdateAdapter(
             database,
@@ -496,7 +499,10 @@ class _$CalendarDao extends CalendarDao {
                   'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'birthDay': item.birthDay,
+                  'birthMonth': item.birthMonth,
+                  'isRecurring': item.isRecurring ? 1 : 0
                 }),
         _calendarEventDeletionAdapter = DeletionAdapter(
             database,
@@ -516,7 +522,10 @@ class _$CalendarDao extends CalendarDao {
                   'isDone': item.isDone ? 1 : 0,
                   'linkedJobId': item.linkedJobId,
                   'linkedJobTitle': item.linkedJobTitle,
-                  'createdAt': item.createdAt
+                  'createdAt': item.createdAt,
+                  'birthDay': item.birthDay,
+                  'birthMonth': item.birthMonth,
+                  'isRecurring': item.isRecurring ? 1 : 0
                 });
 
   final sqflite.DatabaseExecutor database;
@@ -549,7 +558,10 @@ class _$CalendarDao extends CalendarDao {
             isDone: (row['isDone'] as int) != 0,
             linkedJobId: row['linkedJobId'] as String?,
             linkedJobTitle: row['linkedJobTitle'] as String?,
-            createdAt: row['createdAt'] as int),
+            createdAt: row['createdAt'] as int,
+            birthDay: row['birthDay'] as int?,
+            birthMonth: row['birthMonth'] as int?,
+            isRecurring: (row['isRecurring'] as int) != 0),
         arguments: [date]);
   }
 
@@ -560,7 +572,7 @@ class _$CalendarDao extends CalendarDao {
   ) async {
     return _queryAdapter.queryList(
         'SELECT * FROM CalendarEvent WHERE date >= ?1 AND date <= ?2 ORDER BY date ASC, startTime ASC',
-        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, date: row['date'] as String, startTime: row['startTime'] as String?, endTime: row['endTime'] as String?, category: row['category'] as String, itemType: row['itemType'] as String?, contactInfo: row['contactInfo'] as String?, attachmentPath: row['attachmentPath'] as String?, isDone: (row['isDone'] as int) != 0, linkedJobId: row['linkedJobId'] as String?, linkedJobTitle: row['linkedJobTitle'] as String?, createdAt: row['createdAt'] as int),
+        mapper: (Map<String, Object?> row) => CalendarEvent(id: row['id'] as String, title: row['title'] as String, description: row['description'] as String?, date: row['date'] as String, startTime: row['startTime'] as String?, endTime: row['endTime'] as String?, category: row['category'] as String, itemType: row['itemType'] as String?, contactInfo: row['contactInfo'] as String?, attachmentPath: row['attachmentPath'] as String?, isDone: (row['isDone'] as int) != 0, linkedJobId: row['linkedJobId'] as String?, linkedJobTitle: row['linkedJobTitle'] as String?, createdAt: row['createdAt'] as int, birthDay: row['birthDay'] as int?, birthMonth: row['birthMonth'] as int?, isRecurring: (row['isRecurring'] as int) != 0),
         arguments: [from, to]);
   }
 
@@ -582,8 +594,41 @@ class _$CalendarDao extends CalendarDao {
             isDone: (row['isDone'] as int) != 0,
             linkedJobId: row['linkedJobId'] as String?,
             linkedJobTitle: row['linkedJobTitle'] as String?,
-            createdAt: row['createdAt'] as int),
+            createdAt: row['createdAt'] as int,
+            birthDay: row['birthDay'] as int?,
+            birthMonth: row['birthMonth'] as int?,
+            isRecurring: (row['isRecurring'] as int) != 0),
         arguments: [jobId]);
+  }
+
+  @override
+  Future<List<CalendarEvent>> getRecurringBirthdays() async {
+    return _queryAdapter.queryList(
+        'SELECT * FROM CalendarEvent WHERE isRecurring = 1',
+        mapper: (Map<String, Object?> row) => CalendarEvent(
+            id: row['id'] as String,
+            title: row['title'] as String,
+            description: row['description'] as String?,
+            date: row['date'] as String,
+            startTime: row['startTime'] as String?,
+            endTime: row['endTime'] as String?,
+            category: row['category'] as String,
+            itemType: row['itemType'] as String?,
+            contactInfo: row['contactInfo'] as String?,
+            attachmentPath: row['attachmentPath'] as String?,
+            isDone: (row['isDone'] as int) != 0,
+            linkedJobId: row['linkedJobId'] as String?,
+            linkedJobTitle: row['linkedJobTitle'] as String?,
+            createdAt: row['createdAt'] as int,
+            birthDay: row['birthDay'] as int?,
+            birthMonth: row['birthMonth'] as int?,
+            isRecurring: (row['isRecurring'] as int) != 0));
+  }
+
+  @override
+  Future<void> deleteEventById(String id) async {
+    await _queryAdapter.queryNoReturn('DELETE FROM CalendarEvent WHERE id = ?1',
+        arguments: [id]);
   }
 
   @override

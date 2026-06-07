@@ -44,7 +44,7 @@ final allTagsProvider = FutureProvider<List<String>>((ref) async {
 });
 
 class AssetActions {
-  final AssetDao _assetDao; final AssetFolderDao _folderDao; final Ref _ref;
+  final _assetDao; final _folderDao; final Ref _ref;
   AssetActions(this._assetDao, this._folderDao, this._ref);
   Future<void> addFolder(AssetFolder folder) async { await _folderDao.insertFolder(folder); _refreshFolders(); }
   Future<void> updateFolder(AssetFolder folder) async { await _folderDao.updateFolder(folder); _refreshFolders(); }
