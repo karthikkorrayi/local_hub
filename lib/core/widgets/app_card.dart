@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/android_theme.dart';
 
 class AppCard extends StatelessWidget {
   final Widget child;
@@ -13,9 +12,9 @@ class AppCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: color ?? AndroidTheme.card,
+        color: color ?? Theme.of(context).cardTheme.color!,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AndroidTheme.divider),
+        border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),

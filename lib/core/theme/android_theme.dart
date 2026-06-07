@@ -63,7 +63,14 @@ class AndroidTheme {
         onPrimary: Colors.white,
       ).copyWith(
         surface: bg,
+        onSurface: tp,
         surfaceContainerHighest: crd,
+        onSurfaceVariant: ts,
+        outline: div,
+        outlineVariant: div,
+        primaryContainer: dark ? primary.withValues(alpha: 0.18) : primaryLight,
+        onPrimaryContainer: dark ? const Color(0xFFB9F6D0) : const Color(0xFF075E2F),
+        error: dark ? const Color(0xFFF87171) : const Color(0xFFB42318),
       ),
       scaffoldBackgroundColor: bg,
       textTheme: GoogleFonts.interTextTheme().apply(
@@ -109,7 +116,7 @@ class AndroidTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: dark ? const Color(0xFF252837) : surface,
+        fillColor: dark ? const Color(0xFF202431) : const Color(0xFFFFFFFF),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: div)),
@@ -139,7 +146,7 @@ class AndroidTheme {
           textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600))),
       chipTheme: ChipThemeData(
         backgroundColor: crd,
-        selectedColor: primaryLight,
+        selectedColor: dark ? primary.withValues(alpha: 0.18) : primaryLight,
         labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: tp),
         secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: primary),
         side: BorderSide(color: div),
@@ -170,6 +177,13 @@ class AndroidTheme {
       listTileTheme: ListTileThemeData(
         tileColor: Colors.transparent,
         textColor: tp, iconColor: ts),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: dark ? const Color(0xFF252A38) : const Color(0xFF111827),
+        contentTextStyle: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        foregroundColor: Colors.white, elevation: 3),
       popupMenuTheme: PopupMenuThemeData(
         color: crd,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

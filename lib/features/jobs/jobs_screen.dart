@@ -76,7 +76,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen>
   Widget build(BuildContext context) {
     final columns = ref.watch(kanbanColumnsProvider);
     return Scaffold(
-      backgroundColor: AndroidTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text('Job Tracker',
             style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 20)),
@@ -151,7 +151,7 @@ class _StatusPipelineBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AndroidTheme.card,
+      color: Theme.of(context).cardTheme.color!,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
         children: [
@@ -164,7 +164,7 @@ class _StatusPipelineBar extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
                     height: 2,
-                    color: active ? AndroidTheme.primary : AndroidTheme.divider,
+                    color: active ? AndroidTheme.primary : Theme.of(context).dividerColor,
                   ),
                 );
               }
@@ -180,17 +180,17 @@ class _StatusPipelineBar extends StatelessWidget {
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
-                    color: isActive || isPast ? color : AndroidTheme.surface,
+                    color: isActive || isPast ? color : Theme.of(context).colorScheme.surface,
                     shape: BoxShape.circle,
                     border: Border.all(
-                        color: isActive || isPast ? color : AndroidTheme.divider,
+                        color: isActive || isPast ? color : Theme.of(context).dividerColor,
                         width: 2),
                   ),
                   child: Icon(_kStatusIcons[status],
                       size: 14,
                       color: isActive || isPast
                           ? Colors.white
-                          : AndroidTheme.textTertiary),
+                          : Theme.of(context).hintColor),
                 ),
               ).animate(target: isActive ? 1 : 0).scale(
                     begin: const Offset(1, 1),
@@ -215,7 +215,7 @@ class _StatusPipelineBar extends StatelessWidget {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                    color: isActive ? color : AndroidTheme.textTertiary,
+                    color: isActive ? color : Theme.of(context).hintColor,
                   ),
                   child: Text('${_kLabels[status]}\n$count',
                       textAlign: TextAlign.center),
@@ -248,11 +248,11 @@ class _JobList extends StatelessWidget {
           children: [
             Icon(_kStatusIcons[status],
                 size: 48,
-                color: AndroidTheme.textTertiary.withValues(alpha: 0.4)),
+                color: Theme.of(context).hintColor.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
             Text('No ${_kLabels[status]} jobs',
                 style: GoogleFonts.inter(
-                    color: AndroidTheme.textTertiary, fontSize: 15)),
+                    color: Theme.of(context).hintColor, fontSize: 15)),
           ],
         ),
       );
@@ -292,13 +292,13 @@ class _JobCard extends ConsumerWidget {
                       style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
-                          color: AndroidTheme.textPrimary),
+                          color: Theme.of(context).colorScheme.onSurface),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 3),
                   Text(job.company,
                       style: GoogleFonts.inter(
-                          color: AndroidTheme.textSecondary, fontSize: 13),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ],
@@ -311,13 +311,13 @@ class _JobCard extends ConsumerWidget {
                 Text('Last modified',
                     style: GoogleFonts.inter(
                         fontSize: 10,
-                        color: AndroidTheme.textTertiary,
+                        color: Theme.of(context).hintColor,
                         fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(_fmt(job.updatedAt),
                     style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AndroidTheme.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w700)),
               ],
             ),
@@ -492,7 +492,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                   Text(
                     'Updated ${_fmtDate(widget.existing!.updatedAt)}',
                     style: GoogleFonts.inter(
-                        fontSize: 11, color: AndroidTheme.textTertiary),
+                        fontSize: 11, color: Theme.of(context).hintColor),
                   ),
               ],
             ),
@@ -519,7 +519,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                 style: GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AndroidTheme.textSecondary)),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -535,10 +535,10 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: selected ? color : AndroidTheme.surface,
+                        color: selected ? color : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: selected ? color : AndroidTheme.divider),
+                            color: selected ? color : Theme.of(context).dividerColor),
                       ),
                       child: Text(_kLabels[s]!,
                           style: GoogleFonts.inter(
@@ -546,7 +546,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                               fontWeight: FontWeight.w600,
                               color: selected
                                   ? Colors.white
-                                  : AndroidTheme.textSecondary)),
+                                  : Theme.of(context).colorScheme.onSurfaceVariant)),
                     ),
                   );
                 }).toList(),
@@ -558,14 +558,14 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AndroidTheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AndroidTheme.divider),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.calendar_today_outlined,
-                        size: 18, color: AndroidTheme.textSecondary),
+                        size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     const SizedBox(width: 10),
                     Text(
                       _appliedAt != null
@@ -574,15 +574,15 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                       style: GoogleFonts.inter(
                           fontSize: 14,
                           color: _appliedAt != null
-                              ? AndroidTheme.textPrimary
-                              : AndroidTheme.textTertiary),
+                              ? Theme.of(context).colorScheme.onSurface
+                              : Theme.of(context).hintColor),
                     ),
                     const Spacer(),
                     if (_appliedAt != null)
                       GestureDetector(
                         onTap: () => setState(() => _appliedAt = null),
                         child: Icon(Icons.close_rounded,
-                            size: 16, color: AndroidTheme.textTertiary),
+                            size: 16, color: Theme.of(context).hintColor),
                       ),
                   ],
                 ),
@@ -611,13 +611,13 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
                   color: _resumeName != null
-                      ? AndroidTheme.primaryLight
-                      : AndroidTheme.surface,
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                       color: _resumeName != null
                           ? AndroidTheme.primary
-                          : AndroidTheme.divider),
+                          : Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   children: [
@@ -625,7 +625,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                         size: 18,
                         color: _resumeName != null
                             ? AndroidTheme.primary
-                            : AndroidTheme.textSecondary),
+                            : Theme.of(context).colorScheme.onSurfaceVariant),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -634,7 +634,7 @@ class _JobFormSheetState extends ConsumerState<_JobFormSheet> {
                             fontSize: 14,
                             color: _resumeName != null
                                 ? AndroidTheme.primary
-                                : AndroidTheme.textTertiary,
+                                : Theme.of(context).hintColor,
                             fontWeight: _resumeName != null
                                 ? FontWeight.w500
                                 : FontWeight.w400),
@@ -710,7 +710,7 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
     final job = asyncJob.valueOrNull ?? widget.initialJob;
 
     return Scaffold(
-      backgroundColor: AndroidTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(title: const Text('Job Details')),
       body: job == null
           ? const Center(child: CircularProgressIndicator())
@@ -735,12 +735,12 @@ class _JobDetailsScreenState extends ConsumerState<JobDetailsScreen> {
                                 style: GoogleFonts.inter(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
-                                    color: AndroidTheme.textPrimary)),
+                                    color: Theme.of(context).colorScheme.onSurface)),
                             const SizedBox(height: 4),
                             Text(job.company,
                                 style: GoogleFonts.inter(
                                     fontSize: 14,
-                                    color: AndroidTheme.textSecondary,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     fontWeight: FontWeight.w600)),
                           ],
                         ),
@@ -976,7 +976,7 @@ class _StatusSelectorSheetState extends State<_StatusSelectorSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                  color: AndroidTheme.divider,
+                  color: Theme.of(context).dividerColor,
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
@@ -999,10 +999,10 @@ class _StatusSelectorSheetState extends State<_StatusSelectorSheet> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? color.withValues(alpha: 0.12)
-                      : AndroidTheme.surface,
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                      color: isSelected ? color : AndroidTheme.divider,
+                      color: isSelected ? color : Theme.of(context).dividerColor,
                       width: isSelected ? 2 : 1),
                 ),
                 child: Row(
@@ -1029,7 +1029,7 @@ class _StatusSelectorSheetState extends State<_StatusSelectorSheet> {
                               fontSize: 15,
                               color: isSelected
                                   ? color
-                                  : AndroidTheme.textPrimary)),
+                                  : Theme.of(context).colorScheme.onSurface)),
                     ),
                     if (isSelected)
                       Icon(Icons.check_circle_rounded,
@@ -1074,14 +1074,14 @@ class _DateChip extends StatelessWidget {
         Text(label,
             style: GoogleFonts.inter(
                 fontSize: 10,
-                color: AndroidTheme.textTertiary,
+                color: Theme.of(context).hintColor,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(value,
             style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AndroidTheme.textPrimary),
+                color: Theme.of(context).colorScheme.onSurface),
             maxLines: 1),
       ],
     );
@@ -1167,12 +1167,12 @@ class _ActionRow extends StatelessWidget {
         leading: Icon(icon, color: AndroidTheme.primary),
         title: Text(label,
             style: GoogleFonts.inter(
-                fontSize: 12, color: AndroidTheme.textTertiary)),
+                fontSize: 12, color: Theme.of(context).hintColor)),
         subtitle: Text(value,
             style: GoogleFonts.inter(
                 fontSize: 14,
                 color: onTap == null
-                    ? AndroidTheme.textPrimary
+                    ? Theme.of(context).colorScheme.onSurface
                     : AndroidTheme.primary)),
         onTap: onTap,
       );
@@ -1184,7 +1184,7 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _kStatusColors[status] ?? AndroidTheme.textTertiary;
+    final color = _kStatusColors[status] ?? Theme.of(context).hintColor;
     return Chip(
       avatar:
           Icon(_kStatusIcons[status] ?? Icons.circle, size: 16, color: color),
@@ -1215,7 +1215,7 @@ class _TimelineCard extends StatelessWidget {
             if (entries.isEmpty)
               Text('No history yet',
                   style:
-                      GoogleFonts.inter(color: AndroidTheme.textTertiary))
+                      GoogleFonts.inter(color: Theme.of(context).hintColor))
             else
               ...entries.map((e) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -1225,14 +1225,14 @@ class _TimelineCard extends StatelessWidget {
                           Text(_JobDetailsScreenState._fmt(e.date),
                               style: GoogleFonts.inter(
                                   fontSize: 12,
-                                  color: AndroidTheme.textTertiary,
+                                  color: Theme.of(context).hintColor,
                                   fontWeight: FontWeight.w700)),
                           const SizedBox(width: 12),
                           Expanded(
                               child: Text(e.text,
                                   style: GoogleFonts.inter(
                                       fontSize: 14,
-                                      color: AndroidTheme.textPrimary))),
+                                      color: Theme.of(context).colorScheme.onSurface))),
                         ]),
                   )),
           ],

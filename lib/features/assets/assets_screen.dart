@@ -52,8 +52,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
     final assets  = ref.watch(filteredAssetListProvider);
 
     return Scaffold(
-      backgroundColor: AndroidTheme.surface,
-      appBar: AppBar(
+      backgroundColor: Theme.of(context).colorScheme.surface,      appBar: AppBar(
         title: Text('Assets',
             style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700, fontSize: 20)),
@@ -188,7 +187,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                      color: _mcl,
+                      color: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
                       borderRadius: BorderRadius.circular(10)),
                   child:
                       const Icon(Icons.create_new_folder_outlined, color: _mc),
@@ -206,7 +205,7 @@ class _AssetsScreenState extends ConsumerState<AssetsScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                      color: _mcl,
+                      color: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
                       borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.upload_file_rounded, color: _mc),
                 ),
@@ -323,14 +322,14 @@ class _DeleteFolderDialog extends StatelessWidget {
                 text: TextSpan(
                   style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: AndroidTheme.textSecondary),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                   children: [
                     const TextSpan(text: 'Folder: '),
                     TextSpan(
                       text: folder.name,
                       style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
-                          color: AndroidTheme.textPrimary),
+                          color: Theme.of(context).colorScheme.onSurface),
                     ),
                   ],
                 ),
@@ -340,7 +339,7 @@ class _DeleteFolderDialog extends StatelessWidget {
                 'Only app references are deleted. Your original device files are kept.',
                 style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AndroidTheme.textTertiary),
+                    color: Theme.of(context).hintColor),
               ),
               const SizedBox(height: 12),
               Text('Contents:',
@@ -411,13 +410,13 @@ class _FolderTree extends StatelessWidget {
         ...assets.map((a) => Padding(
               padding: EdgeInsets.only(left: indent + 20.0, top: 4),
               child: Row(children: [
-                Icon(_iconFor(a), size: 14, color: AndroidTheme.textSecondary),
+                Icon(_iconFor(a), size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(a.title,
                       style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AndroidTheme.textSecondary),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
@@ -458,7 +457,7 @@ class _BreadcrumbBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AndroidTheme.card,
+      color: Theme.of(context).cardTheme.color!,
       padding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: SingleChildScrollView(
@@ -485,7 +484,7 @@ class _BreadcrumbBar extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(Icons.chevron_right_rounded,
-                      size: 16, color: AndroidTheme.textTertiary),
+                      size: 16, color: Theme.of(context).hintColor),
                 ),
                 GestureDetector(
                   onTap: isLast ? null : () => onTap(i),
@@ -496,7 +495,7 @@ class _BreadcrumbBar extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: isLast
-                              ? AndroidTheme.textPrimary
+                              ? Theme.of(context).colorScheme.onSurface
                               : _mc)),
                 ),
               ]);
@@ -551,7 +550,7 @@ class _FolderTile extends ConsumerWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-              color: _mcl,
+              color: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
               borderRadius: BorderRadius.circular(10)),
           child: const Icon(Icons.folder_rounded, color: _mc, size: 22),
         ),
@@ -561,19 +560,19 @@ class _FolderTile extends ConsumerWidget {
             ? Text(folder.description!,
                 style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AndroidTheme.textTertiary))
+                    color: Theme.of(context).hintColor))
             : null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.delete_outline_rounded,
-                  size: 20, color: AndroidTheme.textTertiary),
+              icon: Icon(Icons.delete_outline_rounded,
+                  size: 20, color: Theme.of(context).hintColor),
               tooltip: 'Delete folder',
               onPressed: onDelete,
             ),
-            const Icon(Icons.chevron_right_rounded,
-                color: AndroidTheme.textTertiary),
+            Icon(Icons.chevron_right_rounded,
+                color: Theme.of(context).hintColor),
           ],
         ),
       ),
@@ -597,10 +596,10 @@ class _AssetTile extends ConsumerWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-              color: _bgColor(asset),
+              color: _bgColor(context, asset),
               borderRadius: BorderRadius.circular(10)),
           child: Icon(_iconFor(asset),
-              color: _iconColor(asset), size: 22),
+              color: _iconColor(context, asset), size: 22),
         ),
         title: Text(asset.title,
             style: GoogleFonts.inter(fontWeight: FontWeight.w600),
@@ -609,7 +608,7 @@ class _AssetTile extends ConsumerWidget {
         subtitle: Text(
           asset.filePath?.split('/').last ?? asset.type,
           style: GoogleFonts.inter(
-              fontSize: 12, color: AndroidTheme.textTertiary),
+              fontSize: 12, color: Theme.of(context).hintColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -647,7 +646,7 @@ class _AssetTile extends ConsumerWidget {
     return Icons.insert_drive_file_rounded;
   }
 
-  static Color _iconColor(Asset a) {
+  static Color _iconColor(BuildContext context, Asset a) {
     final e = (a.filePath ?? a.title).toLowerCase();
     if (e.endsWith('.pdf')) return Colors.red.shade700;
     if (e.endsWith('.jpg') || e.endsWith('.jpeg') || e.endsWith('.png'))
@@ -656,19 +655,21 @@ class _AssetTile extends ConsumerWidget {
       return Colors.blue.shade600;
     if (e.endsWith('.xls') || e.endsWith('.xlsx'))
       return Colors.green.shade700;
-    return AndroidTheme.textSecondary;
+    return Theme.of(context).colorScheme.onSurfaceVariant;
   }
 
-  static Color _bgColor(Asset a) {
+  static Color _bgColor(BuildContext context, Asset a) {
     final e = (a.filePath ?? a.title).toLowerCase();
-    if (e.endsWith('.pdf')) return Colors.red.shade50;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color tint(Color color) => isDark
+        ? color.withValues(alpha: 0.16)
+        : color.withValues(alpha: 0.10);
+    if (e.endsWith('.pdf')) return tint(Colors.red);
     if (e.endsWith('.jpg') || e.endsWith('.jpeg') || e.endsWith('.png'))
-      return Colors.blue.shade50;
-    if (e.endsWith('.doc') || e.endsWith('.docx'))
-      return Colors.blue.shade50;
-    if (e.endsWith('.xls') || e.endsWith('.xlsx'))
-      return Colors.green.shade50;
-    return AndroidTheme.surface;
+      return tint(Colors.blue);
+    if (e.endsWith('.doc') || e.endsWith('.docx')) return tint(Colors.blue);
+    if (e.endsWith('.xls') || e.endsWith('.xlsx')) return tint(Colors.green);
+    return Theme.of(context).colorScheme.surface;
   }
 
   /// Open file — never produce a blank/black screen.
@@ -753,7 +754,7 @@ class _AssetTile extends ConsumerWidget {
                 'Only the app reference is deleted. The original file on your device is not affected.',
                 style: GoogleFonts.inter(
                     fontSize: 12,
-                    color: AndroidTheme.textTertiary),
+                    color: Theme.of(context).hintColor),
               ),
             ],
           ),

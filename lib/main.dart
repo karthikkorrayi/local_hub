@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/backup/backup_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/android_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/widgets/mynest_splash.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,8 +28,9 @@ class MyNestApp extends ConsumerWidget {
       themeMode: appThemeMode.flutterMode,
       routerConfig: appRouter,
       debugShowCheckedModeBanner: false,
-      builder: (context, child) =>
-          AppLifecycleObserver(child: child ?? const SizedBox()),
+      builder: (context, child) => AppLifecycleObserver(
+        child: MyNestStartupSplash(child: child ?? const SizedBox()),
+      ),
     );
   }
 }

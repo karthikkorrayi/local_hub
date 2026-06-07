@@ -720,7 +720,7 @@ class _FilterBar extends ConsumerWidget {
       return Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
         label: Text(f.$1),
         selected: sel,
-        selectedColor: _mcl,
+        selectedColor: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
         checkmarkColor: _mc,
         side: BorderSide(color: sel ? _mc : Theme.of(context).dividerColor),
         labelStyle: GoogleFonts.inter(

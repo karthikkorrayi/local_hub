@@ -26,7 +26,10 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = _selectedIndex(context);
     final activeColor = _destinations[selected].color;
-    final activeLight = _destinations[selected].light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeLight = isDark
+        ? activeColor.withValues(alpha: 0.18)
+        : _destinations[selected].light;
     final isWide = MediaQuery.sizeOf(context).width >= 720;
     final isAndroid = Platform.isAndroid;
 
@@ -68,9 +71,9 @@ class AppShell extends StatelessWidget {
           left: 0, right: 0, bottom: 0,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardTheme.color,
               border: Border(
-                  top: BorderSide(color: AndroidTheme.divider, width: 1)),
+                  top: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.06),
@@ -83,7 +86,7 @@ class AppShell extends StatelessWidget {
               // Override NavigationBar theme with the active module color
               data: Theme.of(context).copyWith(
                 navigationBarTheme: NavigationBarThemeData(
-                  backgroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).cardTheme.color,
                   indicatorColor: activeLight,
                   height: 64,
                   elevation: 0,
@@ -100,7 +103,7 @@ class AppShell extends StatelessWidget {
                           : FontWeight.w500,
                       color: isSelected
                           ? activeColor
-                          : AndroidTheme.textTertiary,
+                          : Theme.of(context).hintColor,
                     );
                   }),
                   iconTheme:
@@ -110,7 +113,7 @@ class AppShell extends StatelessWidget {
                     return IconThemeData(
                       color: isSelected
                           ? activeColor
-                          : AndroidTheme.textTertiary,
+                          : Theme.of(context).hintColor,
                       size: 22,
                     );
                   }),
@@ -120,7 +123,7 @@ class AppShell extends StatelessWidget {
                 selectedIndex: selected,
                 onDestinationSelected: (i) =>
                     context.go(_destinations[i].path),
-                backgroundColor: Colors.white,
+                backgroundColor: Theme.of(context).cardTheme.color,
                 surfaceTintColor: Colors.transparent,
                 shadowColor: Colors.transparent,
                 elevation: 0,

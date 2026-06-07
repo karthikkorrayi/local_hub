@@ -27,7 +27,7 @@ class WishlistScreen extends ConsumerWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 720;
 
     return Scaffold(
-      backgroundColor: AndroidTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: Text('Wishlist',
             style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 20)),
@@ -62,11 +62,11 @@ class WishlistScreen extends ConsumerWidget {
                         Icon(Icons.favorite_border_rounded,
                             size: 48,
                             color:
-                                AndroidTheme.textTertiary.withValues(alpha: 0.4)),
+                                Theme.of(context).hintColor.withValues(alpha: 0.4)),
                         const SizedBox(height: 12),
                         Text('No items here yet',
                             style: GoogleFonts.inter(
-                                color: AndroidTheme.textTertiary, fontSize: 15)),
+                                color: Theme.of(context).hintColor, fontSize: 15)),
                       ],
                     ),
                   )
@@ -132,13 +132,13 @@ class _FilterBar extends ConsumerWidget {
             child: ChoiceChip(
               label: Text(label),
               selected: current == f,
-              selectedColor: _mcl,
+              selectedColor: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
               checkmarkColor: _mc,
               side: BorderSide(
-                  color: current == f ? _mc : AndroidTheme.divider),
+                  color: current == f ? _mc : Theme.of(context).dividerColor),
               labelStyle: GoogleFonts.inter(
                 fontWeight: current == f ? FontWeight.w700 : FontWeight.w500,
-                color: current == f ? _mc : AndroidTheme.textSecondary,
+                color: current == f ? _mc : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               onSelected: (_) =>
                   ref.read(wishlistFilterProvider.notifier).state = f,
@@ -193,14 +193,14 @@ class _WishlistCard extends ConsumerWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AndroidTheme.surface,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: AndroidTheme.divider),
+                      border: Border.all(color: Theme.of(context).dividerColor),
                     ),
                     child: Text(item.category!,
                         style: GoogleFonts.inter(
                             fontSize: 10,
-                            color: AndroidTheme.textSecondary)),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ),
                 ],
                 const SizedBox(height: 6),
@@ -276,7 +276,7 @@ class _ItemImage extends StatelessWidget {
         !localPath.startsWith('http')) {
       return Image.file(File(localPath),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholder());
+          errorBuilder: (_, __, ___) => _placeholder(context));
     }
     if (localPath != null && localPath.startsWith('http')) {
       return CachedNetworkImage(
@@ -284,17 +284,17 @@ class _ItemImage extends StatelessWidget {
         fit: BoxFit.cover,
         placeholder: (_, __) =>
             const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        errorWidget: (_, __, ___) => _placeholder(),
+        errorWidget: (_, __, ___) => _placeholder(context),
       );
     }
-    return _placeholder();
+    return _placeholder(context);
   }
 
-  Widget _placeholder() => Container(
-        color: AndroidTheme.surface,
+  Widget _placeholder(BuildContext context) => Container(
+        color: Theme.of(context).colorScheme.surface,
         child: Icon(Icons.image_outlined,
             size: 40,
-            color: AndroidTheme.textTertiary.withValues(alpha: 0.4)),
+            color: Theme.of(context).hintColor.withValues(alpha: 0.4)),
       );
 }
 
@@ -440,9 +440,9 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
               child: Container(
                 height: 140,
                 decoration: BoxDecoration(
-                  color: AndroidTheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AndroidTheme.divider),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: _localImagePath != null
                     ? Stack(fit: StackFit.expand, children: [
@@ -473,12 +473,12 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
                         children: [
                           Icon(Icons.add_photo_alternate_outlined,
                               size: 32,
-                              color: AndroidTheme.textTertiary
+                              color: Theme.of(context).hintColor
                                   .withValues(alpha: 0.6)),
                           const SizedBox(height: 8),
                           Text('Tap to pick image from gallery',
                               style: GoogleFonts.inter(
-                                  color: AndroidTheme.textTertiary,
+                                  color: Theme.of(context).hintColor,
                                   fontSize: 13)),
                         ],
                       ),
@@ -525,14 +525,14 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: AndroidTheme.surface,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AndroidTheme.divider),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.event_available_outlined,
-                        size: 18, color: AndroidTheme.textSecondary),
+                        size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -542,8 +542,8 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
                         style: GoogleFonts.inter(
                             fontSize: 14,
                             color: _targetPurchaseDate == null
-                                ? AndroidTheme.textTertiary
-                                : AndroidTheme.textPrimary),
+                                ? Theme.of(context).hintColor
+                                : Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                     if (_targetPurchaseDate != null)
@@ -551,7 +551,7 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
                         onTap: () =>
                             setState(() => _targetPurchaseDate = null),
                         child: Icon(Icons.close_rounded,
-                            size: 16, color: AndroidTheme.textTertiary),
+                            size: 16, color: Theme.of(context).hintColor),
                       ),
                   ],
                 ),
@@ -568,9 +568,9 @@ class _WishlistFormSheetState extends ConsumerState<_WishlistFormSheet> {
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
-                color: AndroidTheme.surface,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AndroidTheme.divider),
+                border: Border.all(color: Theme.of(context).dividerColor),
               ),
               child: SwitchListTile(
                 contentPadding:
@@ -655,7 +655,7 @@ class _WishlistDetailsScreenState
     }
 
     return Scaffold(
-      backgroundColor: AndroidTheme.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         title: pageItems.isNotEmpty
             ? Text(pageItems[_currentPage.clamp(0, pageItems.length - 1)].name,
@@ -717,7 +717,7 @@ class _WishlistDetailPage extends ConsumerWidget {
                             style: GoogleFonts.inter(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w800,
-                                color: AndroidTheme.textPrimary)),
+                                color: Theme.of(context).colorScheme.onSurface)),
                         const SizedBox(height: 6),
                         Text(
                           item.price == null
@@ -800,13 +800,13 @@ class _WishlistDetailPage extends ConsumerWidget {
                     horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: item.isPurchased
-                      ? Colors.green.shade50
-                      : AndroidTheme.surface,
+                      ? Colors.green.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.10)
+                      : Theme.of(context).colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: item.isPurchased
-                        ? Colors.green.shade200
-                        : AndroidTheme.divider,
+                        ? Colors.green.withValues(alpha: 0.40)
+                        : Theme.of(context).dividerColor,
                   ),
                 ),
                 child: Row(
@@ -818,7 +818,7 @@ class _WishlistDetailPage extends ConsumerWidget {
                       size: 18,
                       color: item.isPurchased
                           ? Colors.green
-                          : AndroidTheme.textTertiary,
+                          : Theme.of(context).hintColor,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -829,8 +829,8 @@ class _WishlistDetailPage extends ConsumerWidget {
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: item.isPurchased
-                            ? Colors.green.shade700
-                            : AndroidTheme.textSecondary,
+                            ? Colors.green.shade600
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -956,18 +956,18 @@ class _DetailRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: AndroidTheme.textSecondary),
+        Icon(icon, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
         const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
                 style: GoogleFonts.inter(
-                    fontSize: 11, color: AndroidTheme.textTertiary)),
+                    fontSize: 11, color: Theme.of(context).hintColor)),
             Text(value,
                 style: GoogleFonts.inter(
                     fontSize: 14,
-                    color: AndroidTheme.textPrimary,
+                    color: Theme.of(context).colorScheme.onSurface,
                     fontWeight: FontWeight.w500)),
           ],
         ),
@@ -990,14 +990,14 @@ class _InfoChip extends StatelessWidget {
         Text(label,
             style: GoogleFonts.inter(
                 fontSize: 10,
-                color: AndroidTheme.textTertiary,
+                color: Theme.of(context).hintColor,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(value,
             style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AndroidTheme.textPrimary),
+                color: Theme.of(context).colorScheme.onSurface),
             maxLines: 1),
       ],
     );

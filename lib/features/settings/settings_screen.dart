@@ -126,8 +126,8 @@ class SettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: backupState.lastResult!.success
-                          ? Colors.green.shade50
-                          : Colors.red.shade50,
+                          ? Colors.green.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.10)
+                          : Colors.red.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.16 : 0.10),
                       borderRadius: BorderRadius.circular(8)),
                     child: Row(children: [
                       Icon(
@@ -143,8 +143,8 @@ class SettingsScreen extends ConsumerWidget {
                         child: Text(backupState.lastResult!.message,
                             style: GoogleFonts.inter(
                               color: backupState.lastResult!.success
-                                  ? Colors.green.shade800
-                                  : Colors.red.shade800,
+                                  ? Colors.green.shade700
+                                  : Theme.of(context).colorScheme.error,
                               fontSize: 13))),
                     ]),
                   ),
