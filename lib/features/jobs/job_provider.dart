@@ -8,7 +8,6 @@ final jobListProvider = FutureProvider<List<Job>>((ref) async {
   return db.jobDao.getAllJobs();
 });
 
-
 final jobByIdProvider = FutureProvider.family<Job?, String>((ref, id) async {
   final db = await ref.watch(databaseProvider.future);
   return db.jobDao.getJobById(id);
@@ -44,10 +43,13 @@ class JobActions {
     _ref.invalidate(jobByIdProvider(job.id));
   }
 
+  /// Appends a comment to the timeline ONLY.
+  /// Does NOT touch job.notes — notes are the job description field,
+  /// comments are separate activity entries.
   Future<void> appendNote(Job job, JobTimelineEntry entry) async {
     final timeline = [...job.noteTimeline, entry];
     final updated = job.copyWith(
-      notes: entry.text,
+      // notes field intentionally NOT updated — keeps job description separate
       noteHistory: encodeJobTimeline(timeline),
       updatedAt: DateTime.now().millisecondsSinceEpoch,
     );

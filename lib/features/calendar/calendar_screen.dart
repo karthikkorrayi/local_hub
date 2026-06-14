@@ -350,57 +350,224 @@ class _MenuTile extends StatelessWidget {
 }
 
 // ── Event tile (tappable → preview) ───────────────────────────────────────────
-class _EventTile extends ConsumerWidget {
+// ── Event tile — stateful so tasks can expand a completion comment ─────────────
+class _EventTile extends ConsumerStatefulWidget {
   final CalendarEvent event;
   final bool readOnly;
   const _EventTile({required this.event, this.readOnly = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final type   = event.itemType ?? event.category;
+  ConsumerState<_EventTile> createState() => _EventTileState();
+}
+
+class _EventTileState extends ConsumerState<_EventTile> {
+  /// True while the completion-comment field is showing
+  bool _showComment = false;
+  final _commentCtrl = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleCheck(bool? value) async {
+    if (widget.readOnly) return;
+    final willBeChecked = !(widget.event.isDone);
+    if (willBeChecked) {
+      // Show inline comment field before committing
+      setState(() => _showComment = true);
+    } else {
+      // Unchecking — no comment needed, just toggle
+      final a = await ref.read(calendarActionsProvider.future);
+      await a.toggleEventDone(widget.event);
+    }
+  }
+
+  Future<void> _submitComment() async {
+    setState(() => _saving = true);
+    try {
+      final comment = _commentCtrl.text.trim();
+      final a = await ref.read(calendarActionsProvider.future);
+      // Mark done and append comment to description
+      final existing = widget.event.description ?? '';
+      final newDesc  = comment.isEmpty
+          ? existing
+          : existing.isEmpty
+              ? '✓ $comment'
+              : '$existing\n✓ $comment';
+      await a.updateEvent(widget.event.copyWith(
+        isDone:      true,
+        description: newDesc.isEmpty ? null : newDesc,
+      ));
+      if (mounted) {
+        setState(() {
+          _showComment = false;
+          _saving      = false;
+          _commentCtrl.clear();
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _dismissComment() {
+    setState(() {
+      _showComment = false;
+      _commentCtrl.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type   = widget.event.itemType ?? widget.event.category;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color  = isDark
         ? (_categoryDarkColors[type] ?? const Color(0xFF1A1F2A))
         : (_categoryColors[type] ?? const Color(0xFFF1F5F9));
     final icon   = _categoryIcons[type] ?? Icons.event_outlined;
+    final isTask = type == 'task';
 
     return GestureDetector(
-      onTap: () => _showPreview(context, ref),
-      child: Container(
+      onTap: _showComment ? null : () => _showPreview(context),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-        child: Row(children: [
-          if (type == 'task')
-            Checkbox(
-              value: event.isDone, activeColor: _mc,
-              onChanged: readOnly ? null : (_) async {
-                final a = await ref.read(calendarActionsProvider.future);
-                await a.toggleEventDone(event);
-              },
-              visualDensity: VisualDensity.compact)
-          else
-            Padding(padding: const EdgeInsets.only(right: 10),
-                child: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(event.title, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14,
-                decoration: event.isDone ? TextDecoration.lineThrough : null)),
-            if (event.description?.isNotEmpty == true)
-              Text(event.description!, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            Text(_categoryLabels[type] ?? type,
-                style: GoogleFonts.inter(fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600)),
-          ])),
-          Icon(Icons.chevron_right_rounded, size: 16,
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-        ]),
+        padding: EdgeInsets.fromLTRB(12, 10, 12, _showComment ? 12 : 10),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+          border: _showComment
+              ? Border.all(color: _mc.withValues(alpha: 0.4))
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Main row ────────────────────────────────────────────────────
+            Row(children: [
+              if (isTask)
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Checkbox(
+                    value: widget.event.isDone,
+                    activeColor: _mc,
+                    onChanged: widget.readOnly ? null : _handleCheck,
+                    visualDensity: VisualDensity.compact),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Icon(icon, size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.event.title,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w700, fontSize: 14,
+                      decoration: widget.event.isDone ? TextDecoration.lineThrough : null)),
+                  if (widget.event.description?.isNotEmpty == true)
+                    Text(
+                      widget.event.description!,
+                      maxLines: _showComment ? 3 : 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    _categoryLabels[type] ?? type,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600)),
+                ])),
+              if (!_showComment)
+                Icon(Icons.chevron_right_rounded, size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant
+                        .withValues(alpha: 0.5)),
+            ]),
+
+            // ── Inline completion comment ────────────────────────────────────
+            if (_showComment && !widget.readOnly) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              Text(
+                'Add a completion note (optional)',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _mc)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _commentCtrl,
+                autofocus: true,
+                maxLines: 2,
+                style: GoogleFonts.inter(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Done — sent email, blocked by X...',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surface,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Theme.of(context).dividerColor)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _mc, width: 1.5)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      side: BorderSide(color: Theme.of(context).dividerColor),
+                      minimumSize: const Size(0, 40),
+                      padding: EdgeInsets.zero),
+                    onPressed: _saving ? null : _dismissComment,
+                    child: Text('Cancel',
+                        style: GoogleFonts.inter(fontSize: 13)))),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _mc,
+                      minimumSize: const Size(0, 40),
+                      padding: EdgeInsets.zero),
+                    onPressed: _saving ? null : _submitComment,
+                    child: Text(
+                      _saving ? 'Saving…' : 'Mark Done',
+                      style: GoogleFonts.inter(
+                        fontSize: 13, fontWeight: FontWeight.w600)))),
+              ]),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  void _showPreview(BuildContext context, WidgetRef ref) {
-    final day   = dayOnly(DateTime.parse(event.date.length == 10 ? '${event.date}T00:00:00' : event.date));
+  void _showPreview(BuildContext context) {
+    final day   = dayOnly(DateTime.parse(
+        widget.event.date.length == 10
+            ? '${widget.event.date}T00:00:00'
+            : widget.event.date));
     final today = dayOnly(DateTime.now());
     final isPast = day.isBefore(today);
     showModalBottomSheet(
@@ -409,7 +576,8 @@ class _EventTile extends ConsumerWidget {
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-      builder: (_) => _EventPreviewSheet(event: event, isPast: isPast, ref: ref),
+      builder: (_) =>
+          _EventPreviewSheet(event: widget.event, isPast: isPast, ref: ref),
     );
   }
 }
@@ -720,7 +888,7 @@ class _FilterBar extends ConsumerWidget {
       return Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(
         label: Text(f.$1),
         selected: sel,
-        selectedColor: (Theme.of(context).brightness == Brightness.dark ? _mc.withValues(alpha: 0.16) : _mcl),
+        selectedColor: _mcl,
         checkmarkColor: _mc,
         side: BorderSide(color: sel ? _mc : Theme.of(context).dividerColor),
         labelStyle: GoogleFonts.inter(
